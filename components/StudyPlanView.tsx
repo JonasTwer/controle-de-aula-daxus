@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from 'react';
 // Fix: Added missing BookOpen import from lucide-react
 import { ChevronDown, ChevronRight, PlayCircle, CheckCircle, Search, Filter, BookOpen } from 'lucide-react';
-import { CourseGroup, Lesson } from '../types';
+import { ThemeGroup, Lesson } from '../types';
 import { formatSecondsToHHMMSS } from '../utils';
 
 interface StudyPlanViewProps {
-  groupedCourses: CourseGroup[];
+  groupedCourses: ThemeGroup[];
   onRegisterStudy: (lesson: Lesson) => void;
 }
 
@@ -20,17 +20,27 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   };
 
   const filteredData = useMemo(() => {
-    return groupedCourses.map(course => ({
-      ...course,
-      modules: course.modules.map(mod => ({
-        ...mod,
-        lessons: mod.lessons.filter(l => {
-          const matchText = l.title.toLowerCase().includes(searchTerm.toLowerCase());
-          const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
-          return matchText && matchFilter;
-        })
-      })).filter(m => m.lessons.length > 0)
-    })).filter(c => c.modules.length > 0);
+    const searchLower = searchTerm.toLowerCase();
+
+    return groupedCourses.map(course => {
+      const matchCourse = course.name.toLowerCase().includes(searchLower);
+
+      return {
+        ...course,
+        modules: course.modules.map(mod => {
+          const matchModule = mod.name.toLowerCase().includes(searchLower);
+
+          return {
+            ...mod,
+            lessons: mod.lessons.filter(l => {
+              const matchLesson = l.title.toLowerCase().includes(searchLower);
+              const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
+              return (matchCourse || matchModule || matchLesson) && matchFilter;
+            })
+          };
+        }).filter(m => m.lessons.length > 0)
+      };
+    }).filter(c => c.modules.length > 0);
   }, [groupedCourses, searchTerm, filter]);
 
   if (groupedCourses.length === 0) {
@@ -52,10 +62,10 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
       <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-2 z-10 space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Buscar aula ou módulo..." 
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+          <input
+            type="text"
+            placeholder="Buscar tema, módulo ou aula..."
+            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -69,11 +79,10 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             <button
               key={f.id}
               onClick={() => setFilter(f.id as any)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
-                filter === f.id 
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none' 
-                  : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${filter === f.id
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none'
+                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'
+                }`}
             >
               {f.label}
             </button>
@@ -84,19 +93,25 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
       <div className="space-y-8">
         {filteredData.map((course) => (
           <div key={course.name} className="space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 pl-1">{course.name}</h2>
+            <div className="flex items-center gap-2 pl-1">
+              <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-widest">Tema</span>
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">{course.name}</h2>
+            </div>
             <div className="space-y-4">
               {course.modules.map((mod) => {
                 const moduleId = `${course.name}-${mod.name}`;
                 const isOpen = expandedModules[moduleId] || searchTerm.length > 0;
                 return (
-                  <div key={moduleId} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm transition-all">
-                    <button 
+                  <div key={moduleId} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm transition-all duration-300">
+                    <button
                       onClick={() => toggleModule(moduleId)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      className={`w-full flex items-center justify-between p-4 transition-all duration-300 ${isOpen
+                        ? 'bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
                     >
                       <div className="flex items-center gap-4 text-left">
-                        <div className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
+                        <div className={`p-1.5 rounded-lg transition-all duration-300 ${isOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
                           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </div>
                         <div>
@@ -111,12 +126,15 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                       </div>
                     </button>
 
-                    {isOpen && (
-                      <div className="border-t border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                    <div
+                      className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100 py-2' : 'max-h-0 opacity-0'
+                        } overflow-hidden`}
+                    >
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 px-2">
                         {mod.lessons.map((lesson) => (
-                          <div 
-                            key={lesson.id} 
-                            className="group flex items-center justify-between p-4 pl-14 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                          <div
+                            key={lesson.id}
+                            className="group flex items-center justify-between p-4 pl-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
                           >
                             <div className="flex-1 min-w-0 mr-4">
                               <div className="flex items-center gap-2">
@@ -128,7 +146,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                                 {formatSecondsToHHMMSS(lesson.durationSec)}
                               </p>
                             </div>
-                            <button 
+                            <button
                               onClick={() => onRegisterStudy(lesson)}
                               className="flex-shrink-0 p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all active:scale-90"
                             >
@@ -141,7 +159,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                           </div>
                         ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}

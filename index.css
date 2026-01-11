@@ -21,6 +21,20 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea {
+  @apply px-5 py-3.5;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

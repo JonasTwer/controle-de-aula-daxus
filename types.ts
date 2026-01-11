@@ -39,7 +39,7 @@ export interface ModuleGroup {
   progress: number;
 }
 
-export interface CourseGroup {
+export interface ThemeGroup {
   name: string;
   modules: ModuleGroup[];
 }

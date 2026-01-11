@@ -20,8 +20,9 @@ const App: React.FC = () => {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [logs, setLogs] = useState<StudyLog[]>([]);
   const [modalLesson, setModalLesson] = useState<Lesson | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Load from LocalStorage on mount
+  // Auth session listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -36,43 +37,145 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch data from Supabase when session changes
   useEffect(() => {
-    const savedLessons = localStorage.getItem('study_lessons');
-    const savedLogs = localStorage.getItem('study_logs');
-    if (savedLessons) setLessons(JSON.parse(savedLessons));
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
-  }, []);
+    if (session) {
+      fetchUserData();
+      setActiveTab('dashboard'); // Always open on Dashboard after login/refresh
+    } else {
+      setLessons([]);
+      setLogs([]);
+    }
+  }, [session]);
 
-  // Save to LocalStorage on change
-  useEffect(() => {
-    localStorage.setItem('study_lessons', JSON.stringify(lessons));
-  }, [lessons]);
+  const fetchUserData = async () => {
+    if (!session?.user?.id) return;
+    setIsLoading(true);
+    try {
+      // Fetch lessons
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('lessons')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-  useEffect(() => {
-    localStorage.setItem('study_logs', JSON.stringify(logs));
-  }, [logs]);
+      if (lessonsError) throw lessonsError;
 
-  const handleSaveCurriculum = (newLessons: Lesson[]) => {
-    setLessons(newLessons);
-    setActiveTab('plan');
+      // Fetch logs
+      const { data: logsData, error: logsError } = await supabase
+        .from('study_logs')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (logsError) throw logsError;
+
+      // Transform duration_str/duration_sec as they are named differently in DB vs Types if I customized them
+      // But I used snake_case in DB and camelCase in TS. I should probably map them.
+      // Wait, in migration I used theme, module, title, duration_str, duration_sec.
+      // In TS types I have id, theme, module, title, durationStr, durationSec.
+
+      const mappedLessons: Lesson[] = (lessonsData || []).map(l => ({
+        id: l.id,
+        theme: l.theme,
+        module: l.module,
+        title: l.title,
+        durationStr: l.duration_str,
+        durationSec: l.duration_sec
+      }));
+
+      const mappedLogs: StudyLog[] = (logsData || []).map(l => ({
+        lessonId: l.lesson_id,
+        date: l.date,
+        durationSec: l.duration_sec,
+        status: l.status,
+        notes: l.notes || '',
+        lessonTitle: l.lesson_title || ''
+      }));
+
+      setLessons(mappedLessons);
+      setLogs(mappedLogs);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSaveLog = (logData: StudyLog) => {
-    // Upsert log for this lesson
-    setLogs(prev => {
-      const filtered = prev.filter(l => l.lessonId !== logData.lessonId);
-      return [...filtered, logData];
-    });
-    setModalLesson(null);
+  const handleSaveCurriculum = async (newLessons: Lesson[]) => {
+    if (!session?.user?.id) return;
+    setIsLoading(true);
+
+    try {
+      // First, clear existing lessons for this user (Cascade will delete logs)
+      await supabase.from('lessons').delete().eq('user_id', session.user.id);
+
+      // Prepare data for insert
+      const toInsert = newLessons.map(l => ({
+        id: l.id,
+        user_id: session.user.id,
+        theme: l.theme,
+        module: l.module,
+        title: l.title,
+        duration_str: l.durationStr,
+        duration_sec: l.durationSec
+      }));
+
+      const { error } = await supabase.from('lessons').insert(toInsert);
+      if (error) throw error;
+
+      setLessons(newLessons);
+      setLogs([]); // Logs are deleted by cascade
+      setActiveTab('plan');
+    } catch (error) {
+      console.error('Error saving curriculum:', error);
+      alert('Erro ao salvar plano de estudos.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleClearAllData = () => {
-    // Explicitly remove from localStorage to avoid any parsing issues with empty arrays vs null
-    localStorage.removeItem('study_lessons');
-    localStorage.removeItem('study_logs');
-    setLessons([]);
-    setLogs([]);
-    setActiveTab('dashboard');
+  const handleSaveLog = async (logData: StudyLog) => {
+    if (!session?.user?.id) return;
+
+    try {
+      const { error } = await supabase.from('study_logs').upsert({
+        user_id: session.user.id,
+        lesson_id: logData.lessonId,
+        date: logData.date,
+        duration_sec: logData.durationSec,
+        status: logData.status,
+        notes: logData.notes,
+        lesson_title: logData.lessonTitle
+      }, { onConflict: 'user_id,lesson_id,date' }); // Assuming we want one log per lesson/day or just unique lesson_id
+
+      if (error) throw error;
+
+      // Update local state
+      setLogs(prev => {
+        const filtered = prev.filter(l => l.lessonId !== logData.lessonId);
+        return [...filtered, logData];
+      });
+      setModalLesson(null);
+    } catch (error) {
+      console.error('Error saving log:', error);
+    }
+  };
+
+  const handleClearAllData = async () => {
+    if (!session?.user?.id) return;
+    setIsLoading(true);
+
+    try {
+      // Cascade delete handles logs when lessons are deleted
+      await supabase.from('lessons').delete().eq('user_id', session.user.id);
+
+      setLessons([]);
+      setLogs([]);
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error('Error clearing data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const processedData = useMemo(() => {
@@ -98,17 +201,17 @@ const App: React.FC = () => {
     const pendingLessons = enrichedLessons.filter(l => !l.isCompleted);
 
     // Grouping
-    const coursesMap: Record<string, Record<string, Lesson[]>> = {};
+    const themesMap: Record<string, Record<string, Lesson[]>> = {};
     enrichedLessons.forEach(l => {
-      if (!coursesMap[l.theme]) coursesMap[l.theme] = {};
-      if (!coursesMap[l.theme][l.module]) coursesMap[l.theme][l.module] = [];
-      coursesMap[l.theme][l.module].push(l);
+      if (!themesMap[l.theme]) themesMap[l.theme] = {};
+      if (!themesMap[l.theme][l.module]) themesMap[l.theme][l.module] = [];
+      themesMap[l.theme][l.module].push(l);
     });
 
-    const grouped = Object.keys(coursesMap).map(cName => ({
-      name: cName,
-      modules: Object.keys(coursesMap[cName]).map(mName => {
-        const mLessons = coursesMap[cName][mName];
+    const grouped = Object.keys(themesMap).map(themeName => ({
+      name: themeName,
+      modules: Object.keys(themesMap[themeName]).map(mName => {
+        const mLessons = themesMap[themeName][mName];
         const mDur = mLessons.reduce((acc, l) => acc + l.durationSec, 0);
         const mStud = mLessons.reduce((acc, l) => acc + (l.isCompleted ? l.durationSec : 0), 0);
         return {
@@ -119,8 +222,7 @@ const App: React.FC = () => {
       })
     }));
 
-    // Streak Calculation (Rigid Logic)
-    // A day only counts if status === 'completed'
+    // Streak Calculation
     const completedDates = new Set(
       logs.filter(l => l.status === 'completed').map(l => l.date)
     );
@@ -129,12 +231,10 @@ const App: React.FC = () => {
     let checkDate = new Date();
     const today = getTodayDateString();
 
-    // Check today first. If not completed, we start checking from yesterday to see if the streak is still alive.
     if (!completedDates.has(today)) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
-    // Iterate backwards until a day without a completed lesson is found
     for (let i = 0; i < 1000; i++) {
       const dStr = formatDateLocal(checkDate);
       if (completedDates.has(dStr)) {
@@ -163,8 +263,6 @@ const App: React.FC = () => {
     };
   }, [lessons, logs]);
 
-
-
   if (!session) {
     return <AuthView />;
   }
@@ -179,11 +277,27 @@ const App: React.FC = () => {
             </div>
             <h1 className="font-bold text-lg tracking-tight">StudyTracker <span className="text-indigo-500 font-normal">AI</span></h1>
           </div>
-          <div className="text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
-            {processedData.stats.percentage}% Concluído
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">Bem-vindo</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-none">
+                {session.user.user_metadata?.full_name || 'Usuário'}
+              </p>
+            </div>
+            <img
+              src={session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`}
+              alt="Avatar"
+              className="w-10 h-10 rounded-full border-2 border-indigo-500 shadow-sm object-cover object-center"
+            />
           </div>
         </div>
       </header>
+
+      {isLoading && (
+        <div className="fixed inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+        </div>
+      )}
 
       <main className="flex-1 max-w-3xl w-full mx-auto pb-24 p-4">
         {activeTab === 'dashboard' && (
@@ -202,8 +316,11 @@ const App: React.FC = () => {
           <ConfigView
             onSaveData={handleSaveCurriculum}
             onClearData={handleClearAllData}
+            lessons={lessons}
             currentDataCount={lessons.length}
             logs={logs}
+            userMetadata={session.user.user_metadata}
+            userEmail={session.user.email}
           />
         )}
       </main>
