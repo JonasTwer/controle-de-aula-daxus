@@ -27,6 +27,6 @@ export const getStudyAdvice = async (prompt: string, context: string) => {
     return text;
   } catch (error: any) {
     console.error("Gemini API Error Details:", error);
-    return "Erro ao conectar com o assistente. Verifique sua chave de API ou conexão.";
+    return "Erro ao conectar com o assistente. Por favor, confira se a chave VITE_GEMINI_API_KEY está configurada corretamente nas variáveis de ambiente.";
   }
 };
