@@ -1,13 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Lock, Loader2, BookOpen, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const UpdatePasswordView: React.FC = () => {
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+
+    // Update page title
+    useEffect(() => {
+        const originalTitle = document.title;
+        document.title = 'CoursePlanner AI - Redefinir Senha';
+        return () => {
+            document.title = originalTitle;
+        };
+    }, []);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -17,6 +27,10 @@ const UpdatePasswordView: React.FC = () => {
         try {
             if (password.length < 6) {
                 throw new Error('A senha deve ter no mínimo 6 caracteres.');
+            }
+
+            if (password !== confirmPassword) {
+                throw new Error('As senhas não coincidem. Por favor, verifique.');
             }
 
             const { error: updateError } = await supabase.auth.updateUser({
@@ -87,6 +101,21 @@ const UpdatePasswordView: React.FC = () => {
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Confirmar Nova Senha</label>
+                                <div className="relative">
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white placeholder:text-slate-400"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                </div>
+                            </div>
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -98,7 +127,7 @@ const UpdatePasswordView: React.FC = () => {
                                         <span>Salvando...</span>
                                     </>
                                 ) : (
-                                    'Salvar Nova Senha'
+                                    'Salvar'
                                 )}
                             </button>
                         </form>
