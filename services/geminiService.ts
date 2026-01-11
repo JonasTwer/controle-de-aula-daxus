@@ -22,9 +22,20 @@ export const getStudyAdvice = async (prompt: string, context: string) => {
     const response = await result.response;
     const text = response.text();
 
-    return text || "Desculpe, não consegui gerar uma resposta agora.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Erro ao conectar com o assistente. Verifique sua conexão ou configuração da API.";
+    if (!text) throw new Error("Resposta vazia do modelo.");
+
+    return text;
+  } catch (error: any) {
+    console.error("Gemini API Error Details:", error);
+
+    // Erros comuns de API Key
+    if (error.message?.includes("API_KEY_INVALID")) {
+      return "Erro: Sua chave de API do Gemini é inválida.";
+    }
+    if (error.message?.includes("403") || error.message?.includes("PERMISSION_DENIED")) {
+      return "Erro: Sem permissão para usar este modelo. Verifique se a API do Gemini está ativa no seu projeto Google Cloud.";
+    }
+
+    return "Erro ao conectar com o assistente. Verifique sua chave de API ou conexão.";
   }
 };
