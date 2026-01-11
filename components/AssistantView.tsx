@@ -59,7 +59,7 @@ const AssistantView: React.FC<AssistantViewProps> = ({ contextData }) => {
               <div className="flex items-center gap-2 mb-1.5">
                 {msg.role === 'user' ? <User className="w-3 h-3 opacity-60" /> : <Sparkles className="w-3 h-3 text-indigo-500" />}
                 <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
-                  {msg.role === 'user' ? 'Você' : 'Mentor AI'}
+                  {msg.role === 'user' ? 'Você' : 'CoursePlanner AI'}
                 </span>
               </div>
               <p className="leading-relaxed">{msg.text}</p>
