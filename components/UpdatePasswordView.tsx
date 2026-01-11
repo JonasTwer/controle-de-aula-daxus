@@ -46,7 +46,7 @@ const UpdatePasswordView: React.FC = () => {
                     <div className="inline-block bg-white/20 p-3 rounded-2xl mb-4">
                         <BookOpen className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-white tracking-tight mb-1">StudyTracker AI</h1>
+                    <h1 className="text-2xl font-black text-white tracking-tight mb-1">CoursePlanner AI</h1>
                     <p className="text-indigo-100/80 text-sm font-medium">Recuperação de Senha</p>
                 </div>
 

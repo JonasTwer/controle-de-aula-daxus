@@ -1,5 +1,5 @@
 {
-  "name": "StudyTracker AI",
+  "name": "CoursePlanner AI",
   "description": "A comprehensive study management application featuring a course hierarchy, progress tracking, visual analytics, and an integrated AI study mentor powered by Gemini.",
   "requestFramePermissions": [
     "camera",

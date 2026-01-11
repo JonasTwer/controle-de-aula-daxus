@@ -288,7 +288,7 @@ const App: React.FC = () => {
             <div className="bg-indigo-600 p-1.5 rounded-lg">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <h1 className="font-bold text-lg tracking-tight">StudyTracker <span className="text-indigo-500 font-normal">AI</span></h1>
+            <h1 className="font-bold text-lg tracking-tight">CoursePlanner <span className="text-indigo-500 font-normal">AI</span></h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
