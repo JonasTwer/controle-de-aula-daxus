@@ -14,6 +14,8 @@ import AuthView from './components/AuthView';
 import { getTodayDateString, formatSecondsToHHMM, formatDateLocal } from './utils';
 import { Session } from '@supabase/supabase-js';
 
+import UpdatePasswordView from './components/UpdatePasswordView';
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -21,6 +23,8 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<StudyLog[]>([]);
   const [modalLesson, setModalLesson] = useState<Lesson | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isRecovering, setIsRecovering] = useState(false);
 
   // Auth session listener
   useEffect(() => {
@@ -30,23 +34,31 @@ const App: React.FC = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovering(true);
+      }
     });
+
+    // Check for recovery hash on mount
+    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('recovery')) {
+      setIsRecovering(true);
+    }
 
     return () => subscription.unsubscribe();
   }, []);
 
   // Fetch data from Supabase when session changes
   useEffect(() => {
-    if (session) {
+    if (session && !isRecovering) {
       fetchUserData();
       setActiveTab('dashboard'); // Always open on Dashboard after login/refresh
-    } else {
+    } else if (!session) {
       setLessons([]);
       setLogs([]);
     }
-  }, [session]);
+  }, [session, isRecovering]);
 
   const fetchUserData = async () => {
     if (!session?.user?.id) return;
@@ -67,11 +79,6 @@ const App: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (logsError) throw logsError;
-
-      // Transform duration_str/duration_sec as they are named differently in DB vs Types if I customized them
-      // But I used snake_case in DB and camelCase in TS. I should probably map them.
-      // Wait, in migration I used theme, module, title, duration_str, duration_sec.
-      // In TS types I have id, theme, module, title, durationStr, durationSec.
 
       const mappedLessons: Lesson[] = (lessonsData || []).map(l => ({
         id: l.id,
@@ -145,7 +152,7 @@ const App: React.FC = () => {
         status: logData.status,
         notes: logData.notes,
         lesson_title: logData.lessonTitle
-      }, { onConflict: 'user_id,lesson_id,date' }); // Assuming we want one log per lesson/day or just unique lesson_id
+      }, { onConflict: 'user_id,lesson_id,date' });
 
       if (error) throw error;
 
@@ -262,6 +269,12 @@ const App: React.FC = () => {
       pendingLessons
     };
   }, [lessons, logs]);
+
+  if (isRecovering) {
+    return (
+      <UpdatePasswordView />
+    );
+  }
 
   if (!session) {
     return <AuthView />;
