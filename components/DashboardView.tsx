@@ -34,7 +34,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     const dStr = formatDateLocal(d);
     const mins = logs
       .filter(l => l.date === dStr && l.status === 'completed')
-      .reduce((acc, l) => acc + (l.durationSec / 60), 0);
+      .reduce((acc, l) => acc + ((l.durationSec || 0) / 60), 0);
     return {
       name: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
       minutes: Math.round(mins)

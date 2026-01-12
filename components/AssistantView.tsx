@@ -32,7 +32,7 @@ const AssistantView: React.FC<AssistantViewProps> = ({ contextData }) => {
       - Horas estudadas: ${contextData.stats.totalStudiedFormatted}
       - Horas restantes: ${contextData.stats.remainingFormatted}
       - Streak: ${contextData.stats.streak} dias
-      - Próximas aulas: ${contextData.pendingLessons.slice(0, 3).map((l: any) => l.title).join(', ')}
+      - Próximas aulas: ${contextData.pendingLessons.slice(0, 3).map((l: any) => `${l.materia}: ${l.title} (${l.meta})`).join(', ')}
     `;
 
     const response = await getStudyAdvice(userMsg, contextStr);

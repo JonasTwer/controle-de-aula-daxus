@@ -1,8 +1,8 @@
 
 export interface Lesson {
   id: string;
-  theme: string;
-  module: string;
+  meta: string;
+  materia: string;
   title: string;
   durationStr: string;
   durationSec: number;
@@ -33,13 +33,13 @@ export interface AppStats {
 
 export type TabId = 'dashboard' | 'plan' | 'assistant' | 'config';
 
-export interface ModuleGroup {
+export interface MateriaGroup {
   name: string;
   lessons: Lesson[];
   progress: number;
 }
 
-export interface ThemeGroup {
+export interface MetaGroup {
   name: string;
-  modules: ModuleGroup[];
+  modules: MateriaGroup[];
 }

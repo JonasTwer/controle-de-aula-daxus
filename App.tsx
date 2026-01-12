@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BarChart2, BookOpen, MessageSquare, Settings } from 'lucide-react';
 import { TabId, Lesson, StudyLog } from './types';
 import DashboardView from './components/DashboardView';
@@ -38,30 +38,15 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (session && !isRecovering) {
-      fetchUserData();
-    } else {
-      setLessons([]);
-      setLogs([]);
-    }
-  }, [session, isRecovering]);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!session?.user?.id) return;
     setIsLoading(true);
-
-    console.log("========================================");
-    console.log("INICIANDO FETCH DE DADOS DO BANCO");
-    console.log("User ID:", session.user.id);
-    console.log("========================================");
 
     try {
       const { data: lData, error: lErr } = await supabase
         .from('lessons')
         .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: true });
+        .eq('user_id', session.user.id);
 
       if (lErr) throw lErr;
 
@@ -74,12 +59,24 @@ const App: React.FC = () => {
 
       const mappedLessons = (lData || []).map(l => ({
         id: l.id,
-        theme: l.theme,
-        module: l.module,
-        title: l.title,
-        durationStr: l.duration_str,
-        durationSec: l.duration_sec
+        meta: l.meta || l.theme || 'Sem Meta',
+        materia: l.materia || l.module || 'Sem Matéria',
+        title: l.title || 'Aula sem título',
+        durationStr: l.duration_str || '00:00:00',
+        durationSec: l.duration_sec || 0,
+        createdAt: l.created_at || new Date().toISOString()
       }));
+
+      mappedLessons.sort((a, b) => {
+        const metaCmp = a.meta.localeCompare(b.meta, undefined, { numeric: true, sensitivity: 'base' });
+        if (metaCmp !== 0) return metaCmp;
+
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+
+        return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+      });
 
       const mappedLogs = (logsData || []).map(l => ({
         lessonId: l.lesson_id,
@@ -92,13 +89,22 @@ const App: React.FC = () => {
 
       setLessons(mappedLessons);
       setLogs(mappedLogs);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar dados:", error);
-      toast.error('Erro ao carregar dados do banco.');
+      toast.error(`Erro: ${error.message || 'Falha na conexão com o banco'}`);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (session && !isRecovering) {
+      fetchUserData();
+    } else {
+      setLessons([]);
+      setLogs([]);
+    }
+  }, [session, isRecovering, fetchUserData]);
 
   const handleSaveCurriculum = async (incomingLessons: Lesson[]) => {
     if (!session?.user?.id) {
@@ -106,34 +112,43 @@ const App: React.FC = () => {
       return;
     }
 
-
-
     setIsLoading(true);
 
     try {
-      // Passo 1: Preparar dados
       const timestamp = new Date().getTime();
-      const lessonsToInsert = incomingLessons.map((l, idx) => ({
-        id: `L-${timestamp}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+
+      // Tentativa 1: Novo padrão (meta/materia)
+      const lessonsBatchNew = incomingLessons.map((l, idx) => ({
+        id: `L-${timestamp}-${idx.toString().padStart(4, '0')}-${Math.random().toString(36).substr(2, 5)}`,
         user_id: session.user.id,
-        theme: l.theme,
-        module: l.module,
+        meta: l.meta,
+        materia: l.materia,
         title: l.title,
         duration_str: l.durationStr,
         duration_sec: l.durationSec
       }));
 
-      // Passo 2: INSERIR NO BANCO (SEM DELETE!)
-      const { data: insertData, error: insertErr } = await supabase
-        .from('lessons')
-        .insert(lessonsToInsert)
-        .select();
+      const { error: errorNew } = await supabase.from('lessons').insert(lessonsBatchNew);
 
-      if (insertErr) {
-        throw new Error(`Falha ao inserir: ${insertErr.message}`);
+      // Se falhar porque a coluna não existe, tenta o padrão antigo (fallback)
+      if (errorNew && (errorNew.message.includes('column') || errorNew.code === '42703')) {
+        console.warn("Detectado schema antigo no banco. Realizando fallback para theme/module...");
+        const lessonsBatchOld = incomingLessons.map((l, idx) => ({
+          id: `L-${timestamp}-${idx.toString().padStart(4, '0')}-${Math.random().toString(36).substr(2, 5)}`,
+          user_id: session.user.id,
+          theme: l.meta,
+          module: l.materia,
+          title: l.title,
+          duration_str: l.durationStr,
+          duration_sec: l.durationSec
+        }));
+
+        const { error: errorOld } = await supabase.from('lessons').insert(lessonsBatchOld);
+        if (errorOld) throw errorOld;
+      } else if (errorNew) {
+        throw errorNew;
       }
 
-      // Passo 3: BUSCAR TUDO DE NOVO
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchUserData();
 
@@ -144,19 +159,25 @@ const App: React.FC = () => {
       });
     } catch (error: any) {
       console.error("Erro na importação:", error);
-      toast.error(`Erro ao importar: ${error.message}`, {
-        duration: 4000,
-      });
+      toast.error(`Erro ao importar: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteCourse = async (courseName: string) => {
+  const handleDeleteCourse = async (metaName: string) => {
     if (!session?.user?.id) return;
     setIsLoading(true);
     try {
-      await supabase.from('lessons').delete().eq('user_id', session.user.id).eq('theme', courseName);
+      // Tenta deletar usando meta e se falhar tenta usando theme
+      const { error: errMeta } = await supabase.from('lessons').delete().eq('user_id', session.user.id).eq('meta', metaName);
+
+      if (errMeta && (errMeta.message.includes('column') || errMeta.code === '42703')) {
+        await supabase.from('lessons').delete().eq('user_id', session.user.id).eq('theme', metaName);
+      } else if (errMeta) {
+        throw errMeta;
+      }
+
       await fetchUserData();
       toast.success('Curso excluído com sucesso!');
     } catch (error) {
@@ -171,7 +192,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       if (logData.status === 'completed') {
-        await supabase.from('study_logs').upsert({
+        const { error } = await supabase.from('study_logs').upsert({
           user_id: session.user.id,
           lesson_id: logData.lessonId,
           date: logData.date,
@@ -180,12 +201,28 @@ const App: React.FC = () => {
           notes: logData.notes,
           lesson_title: logData.lessonTitle
         }, { onConflict: 'user_id,lesson_id' });
+
+        if (error) throw error;
+
+        await fetchUserData();
+        setModalLesson(null);
+        toast.success('Aula concluída com sucesso! 🎉', {
+          duration: 3000,
+          icon: '✅'
+        });
       } else {
-        await supabase.from('study_logs').delete().eq('user_id', session.user.id).eq('lesson_id', logData.lessonId);
+        const { error } = await supabase.from('study_logs').delete().eq('user_id', session.user.id).eq('lesson_id', logData.lessonId);
+
+        if (error) throw error;
+
+        await fetchUserData();
+        setModalLesson(null);
+        toast.success('Status da aula atualizado.', {
+          duration: 2000
+        });
       }
-      await fetchUserData();
-      setModalLesson(null);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[ERROR] Erro em handleSaveLog:', error);
       toast.error("Erro ao salvar progresso no Plano de Estudo.");
     } finally {
       setIsLoading(false);
@@ -216,7 +253,9 @@ const App: React.FC = () => {
   const processedData = useMemo(() => {
     const lessonProgress: Record<string, boolean> = {};
     logs.forEach(log => {
-      if (log.status === 'completed') lessonProgress[log.lessonId] = true;
+      if (log.status === 'completed') {
+        lessonProgress[log.lessonId] = true;
+      }
     });
 
     const enrichedLessons = lessons.map(l => ({
@@ -229,22 +268,40 @@ const App: React.FC = () => {
     const todayStr = getTodayDateString();
     const todaySeconds = logs
       .filter(l => l.date === todayStr && l.status === 'completed')
-      .reduce((acc, l) => acc + l.durationSec, 0);
+      .reduce((acc, l) => acc + (l.durationSec || 0), 0);
 
-    const themesMap: Record<string, Record<string, Lesson[]>> = {};
+    const metaGroups: { name: string, modules: { name: string, lessons: Lesson[] }[] }[] = [];
+    const metaIndexMap: Record<string, number> = {};
+    const moduleIndexMap: Record<string, number> = {};
+
     enrichedLessons.forEach(l => {
-      if (!themesMap[l.theme]) themesMap[l.theme] = {};
-      if (!themesMap[l.theme][l.module]) themesMap[l.theme][l.module] = [];
-      themesMap[l.theme][l.module].push(l);
+      if (metaIndexMap[l.meta] === undefined) {
+        metaIndexMap[l.meta] = metaGroups.length;
+        metaGroups.push({ name: l.meta, modules: [] });
+      }
+      const mIdx = metaIndexMap[l.meta];
+      const modKey = `${l.meta}|${l.materia}`;
+
+      if (moduleIndexMap[modKey] === undefined) {
+        moduleIndexMap[modKey] = metaGroups[mIdx].modules.length;
+        metaGroups[mIdx].modules.push({ name: l.materia, lessons: [] });
+      }
+      const modIdx = moduleIndexMap[modKey];
+      metaGroups[mIdx].modules[modIdx].lessons.push(l);
     });
 
-    const grouped = Object.keys(themesMap).map(themeName => ({
-      name: themeName,
-      modules: Object.keys(themesMap[themeName]).map(mName => {
-        const mLessons = themesMap[themeName][mName];
-        const mDur = mLessons.reduce((acc, l) => acc + l.durationSec, 0);
-        const mStud = mLessons.reduce((acc, l) => acc + (l.isCompleted ? l.durationSec : 0), 0);
-        return { name: mName, lessons: mLessons, progress: mDur > 0 ? (mStud / mDur) * 100 : 0 };
+    metaGroups.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+    const grouped = metaGroups.map(meta => ({
+      ...meta,
+      modules: meta.modules.map(mod => {
+        const mDur = mod.lessons.reduce((acc, l) => acc + (l.durationSec || 0), 0);
+        const mStud = mod.lessons.reduce((acc, l) => acc + (l.isCompleted ? (l.durationSec || 0) : 0), 0);
+        return {
+          name: mod.name,
+          lessons: mod.lessons,
+          progress: mDur > 0 ? (mStud / mDur) * 100 : 0
+        };
       })
     }));
 

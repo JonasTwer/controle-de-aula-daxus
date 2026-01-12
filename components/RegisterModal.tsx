@@ -35,7 +35,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ lesson, onClose, onSave }
             <X className="w-5 h-5" />
           </button>
           <div className="mb-1">
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{lesson.module}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{lesson.materia}</span>
           </div>
           <h3 className="text-xl font-black tracking-tight leading-tight">{lesson.title}</h3>
         </div>
@@ -71,8 +71,8 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ lesson, onClose, onSave }
               type="button"
               onClick={() => setIsComplete(!isComplete)}
               className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${isComplete
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-300'
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-300'
                 }`}
             >
               <div className="flex items-center gap-3">

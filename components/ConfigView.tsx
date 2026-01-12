@@ -172,16 +172,16 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
       lines.forEach((line, idx) => {
         const parts = line.includes('|') ? line.split('|') : line.split('\t');
         if (parts.length >= 4) {
-          const theme = parts[0].trim();
-          const module = parts[1].trim();
+          const meta = parts[0].trim();
+          const materia = parts[1].trim();
           const title = parts[2].trim();
           const durationStr = parts[3].trim();
           if (!durationStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) return;
 
           parsed.push({
             id: `TMP-${Date.now()}-${idx}`,
-            theme,
-            module,
+            meta,
+            materia,
             title,
             durationStr,
             durationSec: parseDurationToSeconds(durationStr)
@@ -382,13 +382,13 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-500" /> Cursos Ativos</h3>
-        {Array.from(new Set(lessons.map(l => l.theme))).length === 0 ? <p className="text-center py-8 text-sm text-slate-400">Nenhum curso.</p> : (
+        {Array.from(new Set(lessons.map(l => l.meta))).length === 0 ? <p className="text-center py-8 text-sm text-slate-400">Nenhum curso.</p> : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {Array.from(new Set(lessons.map(l => l.theme))).sort().map((course) => (
+            {Array.from(new Set(lessons.map(l => l.meta))).sort().map((course) => (
               <div key={course} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-100 dark:border-slate-700 group transition-all">
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[150px]">{course}</span>
-                  <span className="text-[10px] text-slate-400">{lessons.filter(l => l.theme === course).length} aulas</span>
+                  <span className="text-[10px] text-slate-400">{lessons.filter(l => l.meta === course).length} aulas</span>
                 </div>
                 <button
                   onClick={async () => {

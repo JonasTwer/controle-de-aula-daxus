@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from 'react';
 // Fix: Added missing BookOpen import from lucide-react
 import { ChevronDown, ChevronRight, PlayCircle, CheckCircle, Search, Filter, BookOpen } from 'lucide-react';
-import { ThemeGroup, Lesson } from '../types';
+import { MetaGroup, Lesson } from '../types';
 import { formatSecondsToHHMMSS } from '../utils';
 
 interface StudyPlanViewProps {
-  groupedCourses: ThemeGroup[];
+  groupedCourses: MetaGroup[];
   onRegisterStudy: (lesson: Lesson) => void;
 }
 
@@ -22,25 +22,25 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   const filteredData = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
 
-    return groupedCourses.map(course => {
-      const matchCourse = course.name.toLowerCase().includes(searchLower);
+    return groupedCourses.map(meta => {
+      const matchMeta = meta.name.toLowerCase().includes(searchLower);
 
       return {
-        ...course,
-        modules: course.modules.map(mod => {
-          const matchModule = mod.name.toLowerCase().includes(searchLower);
+        ...meta,
+        modules: meta.modules.map(mod => {
+          const matchMateria = mod.name.toLowerCase().includes(searchLower);
 
           return {
             ...mod,
             lessons: mod.lessons.filter(l => {
               const matchLesson = l.title.toLowerCase().includes(searchLower);
               const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
-              return (matchCourse || matchModule || matchLesson) && matchFilter;
+              return (matchMeta || matchMateria || matchLesson) && matchFilter;
             })
           };
         }).filter(m => m.lessons.length > 0)
       };
-    }).filter(c => c.modules.length > 0);
+    }).filter(m => m.modules.length > 0);
   }, [groupedCourses, searchTerm, filter]);
 
   if (groupedCourses.length === 0) {
@@ -58,13 +58,13 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-4">
       <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-2 z-10 space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar tema, módulo ou aula..."
+            placeholder="Buscar meta, matéria ou aula..."
             className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -90,20 +90,20 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
         </div>
       </div>
 
-      <div className="space-y-8">
-        {filteredData.map((course) => (
-          <div key={course.name} className="space-y-4">
+      <div className="space-y-8 pb-8">
+        {filteredData.map((meta) => (
+          <div key={meta.name} className="space-y-4">
             <div className="flex items-center gap-2 pl-1">
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">{course.name}</h2>
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">{meta.name}</h2>
             </div>
             <div className="space-y-4">
-              {course.modules.map((mod) => {
-                const moduleId = `${course.name}-${mod.name}`;
-                const isOpen = expandedModules[moduleId] || searchTerm.length > 0;
+              {meta.modules.map((mod) => {
+                const materiaId = `${meta.name}-${mod.name}`;
+                const isOpen = expandedModules[materiaId] || searchTerm.length > 0;
                 return (
-                  <div key={moduleId} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm transition-all duration-300">
+                  <div key={materiaId} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm transition-all duration-300">
                     <button
-                      onClick={() => toggleModule(moduleId)}
+                      onClick={() => toggleModule(materiaId)}
                       className={`w-full flex items-center justify-between p-4 transition-all duration-300 ${isOpen
                         ? 'bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -125,40 +125,45 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                       </div>
                     </button>
 
-                    <div
-                      className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100 py-2' : 'max-h-0 opacity-0'
-                        } overflow-hidden`}
-                    >
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800 px-2">
-                        {mod.lessons.map((lesson) => (
-                          <div
-                            key={lesson.id}
-                            className="group flex items-center justify-between p-4 pl-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                          >
-                            <div className="flex-1 min-w-0 mr-4">
-                              <div className="flex items-center gap-2">
-                                <p className={`text-sm font-medium truncate ${lesson.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
-                                  {lesson.title}
+                    {isOpen && (
+                      <div className="py-2">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 px-2">
+                          {mod.lessons.map((lesson) => (
+                            <div
+                              key={lesson.id}
+                              className="group flex items-center justify-between p-4 pl-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                            >
+                              <div className="flex-1 min-w-0 mr-4">
+                                <div className="flex items-center gap-2">
+                                  <p className={`text-sm font-medium truncate transition-all duration-300 ${lesson.isCompleted
+                                    ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
+                                    : 'text-slate-700 dark:text-slate-200'
+                                    }`}>
+                                    {lesson.title}
+                                  </p>
+                                </div>
+                                <p className={`text-[10px] font-mono mt-0.5 ${lesson.isCompleted
+                                  ? 'text-slate-300 dark:text-slate-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {formatSecondsToHHMMSS(lesson.durationSec)}
                                 </p>
                               </div>
-                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                {formatSecondsToHHMMSS(lesson.durationSec)}
-                              </p>
+                              <button
+                                onClick={() => onRegisterStudy(lesson)}
+                                className="flex-shrink-0 p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all active:scale-90"
+                              >
+                                {lesson.isCompleted ? (
+                                  <CheckCircle className="w-6 h-6 text-emerald-500" />
+                                ) : (
+                                  <PlayCircle className="w-6 h-6" />
+                                )}
+                              </button>
                             </div>
-                            <button
-                              onClick={() => onRegisterStudy(lesson)}
-                              className="flex-shrink-0 p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all active:scale-90"
-                            >
-                              {lesson.isCompleted ? (
-                                <CheckCircle className="w-6 h-6 text-emerald-500" />
-                              ) : (
-                                <PlayCircle className="w-6 h-6" />
-                              )}
-                            </button>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
