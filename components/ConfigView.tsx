@@ -309,7 +309,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Formato Esperado</p>
           <p className="text-xs text-indigo-800 dark:text-indigo-300 font-mono">Meta | Matéria | Título da Aula | 00:15:00</p>
         </div>
-        <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="Direito Constitucional | Direitos Fundamentais | Art. 5º da Constituição Federal | 00:15:00" value={input} onChange={(e) => setInput(e.target.value)} />
+        <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="Meta 1 | Direito Constitucional | Direitos Fundamentais - Art. 5º da Constituição Federal | 00:45:00" value={input} onChange={(e) => setInput(e.target.value)} />
         <div className="mt-4 space-y-3">
           {error && <div className="flex items-center gap-2 text-red-500 text-xs font-medium"><AlertCircle className="w-4 h-4" /> {error}</div>}
           {success && <div className="flex items-center gap-2 text-emerald-500 text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Importado com sucesso!</div>}
