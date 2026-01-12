@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { Upload, Trash2, Database, AlertCircle, CheckCircle2, FileText, AlertTriangle, LogOut, Key, Loader2, BookOpen } from 'lucide-react';
+import { Upload, Trash2, Database, AlertCircle, CheckCircle2, FileText, AlertTriangle, LogOut, Key, Loader2, BookOpen, X } from 'lucide-react';
 import { Lesson, StudyLog } from '../types';
 import { parseDurationToSeconds, formatDateLocal } from '../utils';
 import Cropper from 'react-easy-crop';
@@ -24,6 +24,9 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile & Password state
   const [displayName, setDisplayName] = useState(userMetadata?.full_name || '');
@@ -96,12 +99,9 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        setCroppingImage(reader.result as string);
-        setShowCropper(true);
-      });
-      reader.readAsDataURL(file);
+      const imageUrl = URL.createObjectURL(file);
+      setCroppingImage(imageUrl);
+      setShowCropper(true);
     }
   };
 
@@ -112,27 +112,52 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
   const handleConfirmCrop = async () => {
     if (!croppingImage || !croppedAreaPixels) return;
     setLoading(true);
-    setProfileError('');
+    const toastId = toast.loading('Processando imagem...');
+
     try {
       const croppedImageBlob = await getCroppedImg(croppingImage, croppedAreaPixels);
       if (!croppedImageBlob) throw new Error('Falha ao processar imagem.');
+
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Usuário não autenticado.');
 
-      const fileName = `${userData.user.id}/${Date.now()}.jpg`;
+      const userPath = userData.user.id;
+      const fileName = `${userPath}/${Date.now()}.jpg`;
+
+      toast.loading('Enviando para o servidor...', { id: toastId });
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, croppedImageBlob, { contentType: 'image/jpeg', upsert: true });
+        .upload(fileName, croppedImageBlob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
+
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+
       setAvatarUrl(publicUrl);
       setPreviewUrl(publicUrl);
+
+      // 3. ATUALIZAR METADADOS DO PERFIL AUTOMATICAMENTE
+      toast.loading('Salvando perfil...', { id: toastId });
+      const { error: metaError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      if (metaError) throw metaError;
+
       setShowCropper(false);
-      setProfileSuccess(true);
-      setTimeout(() => setProfileSuccess(false), 3000);
+      setCroppingImage(null);
+
+      toast.success('Foto de perfil atualizada com sucesso!', {
+        id: toastId,
+        duration: 3000
+      });
     } catch (e: any) {
-      setProfileError(e.message || 'Erro ao processar imagem.');
+      console.error('Erro no crop:', e);
+      toast.error(e.message || 'Erro ao processar imagem.', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -270,11 +295,29 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Foto</label>
                 <div className="flex items-center gap-4 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl">
-                  {previewUrl ? <img src={previewUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500" /> : <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-[10px] font-bold">SEM FOTO</div>}
-                  <label className="flex-1 cursor-pointer">
-                    <span className="inline-block px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-all">Trocar Foto</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                  </label>
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 shadow-sm" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-[10px] font-bold border border-dashed border-slate-300 dark:border-slate-600">
+                      SEM FOTO
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg text-xs font-bold transition-all border border-indigo-100 dark:border-indigo-800/50"
+                    >
+                      Trocar Foto
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -387,6 +430,78 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           </div>
         )}
       </div>
+
+      {/* MODAL DE RECORTE (CROPPER) */}
+      {showCropper && croppingImage && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] overflow-hidden shadow-2xl w-full max-w-lg flex flex-col animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-700">
+            {/* Header do Modal */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white">Ajustar Foto</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Arraste e use o zoom para enquadrar</p>
+              </div>
+              <button
+                onClick={() => { setShowCropper(false); setCroppingImage(null); }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-all"
+              >
+                <X className="w-6 h-6 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Área do Cropper */}
+            <div className="relative h-80 bg-slate-950">
+              <Cropper
+                image={croppingImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+                cropShape="round"
+                showGrid={false}
+              />
+            </div>
+
+            {/* Controle de Zoom */}
+            <div className="p-6 space-y-6">
+              <div className="space-y-3">
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span>Zoom</span>
+                  <span>{Math.round(zoom * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setShowCropper(false); setCroppingImage(null); }}
+                  className="flex-1 py-4 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-100 dark:hover:bg-slate-600 transition-all border border-slate-200 dark:border-slate-600"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmCrop}
+                  disabled={loading}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Recorte'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
