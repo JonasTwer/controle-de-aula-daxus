@@ -102,7 +102,7 @@ const App: React.FC = () => {
 
   const handleSaveCurriculum = async (incomingLessons: Lesson[]) => {
     if (!session?.user?.id) {
-      alert('Sessão expirada!');
+      toast.error('Sessão expirada. Faça login novamente.');
       return;
     }
 
@@ -138,7 +138,7 @@ const App: React.FC = () => {
       await fetchUserData();
 
       setActiveTab('plan');
-      toast.success('Aulas adicionadas com sucesso!', {
+      toast.success('Aulas adicionadas ao seu Plano de Estudo!', {
         duration: 3000,
         icon: '✅',
       });
@@ -186,7 +186,7 @@ const App: React.FC = () => {
       await fetchUserData();
       setModalLesson(null);
     } catch (error) {
-      alert("Erro ao salvar progresso.");
+      toast.error("Erro ao salvar progresso no Plano de Estudo.");
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +202,7 @@ const App: React.FC = () => {
           await supabase.from('lessons').delete().eq('user_id', session.user.id);
           await fetchUserData();
           setActiveTab('dashboard');
-          toast.success('Todos os dados foram removidos.');
+          toast.success('Seu Plano de Estudo foi limpo.');
         } catch (error) {
           toast.error('Erro ao limpar dados.');
         } finally {

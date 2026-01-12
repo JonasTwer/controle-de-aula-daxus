@@ -346,7 +346,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <h2 className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-          <Upload className="w-5 h-5 text-indigo-500" /> Importar Plano de Estudos
+          <Upload className="w-5 h-5 text-indigo-500" /> Importação do Plano de Estudo
         </h2>
         <div className="bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4">
           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Formato Esperado</p>

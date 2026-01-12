@@ -94,7 +94,6 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
         {filteredData.map((course) => (
           <div key={course.name} className="space-y-4">
             <div className="flex items-center gap-2 pl-1">
-              <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-widest">Tema</span>
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">{course.name}</h2>
             </div>
             <div className="space-y-4">

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Mail, Lock, Loader2, BookOpen, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AuthView: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ const AuthView: React.FC = () => {
                     password,
                 });
                 if (signUpError) throw signUpError;
-                alert('Cadastro realizado com sucesso! Verifique seu email para confirmar.');
+                toast.success('Cadastro realizado com sucesso! Verifique seu email.');
             } else if (mode === 'login') {
                 const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
