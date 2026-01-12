@@ -139,8 +139,6 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
   const handleImport = async () => {
     setLoading(true);
-    setError('');
-    console.log("CONFIG: STARTING PARSING...");
     try {
       const lines = input.trim().split('\n');
       const parsed: Lesson[] = [];
@@ -168,7 +166,6 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
       if (parsed.length === 0) {
         setError('Nenhuma aula válida encontrada. Formato esperado: Tema | Módulo | Aula | 00:15:00');
       } else {
-        console.log(`CONFIG: PARSED ${parsed.length} LESSONS. CALLING onSaveData (APPEND)...`);
         await onSaveData(parsed);
         setInput('');
         setSuccess(true);
@@ -267,7 +264,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <h2 className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-          <Upload className="w-5 h-5 text-indigo-500" /> Importação Incremental (V3)
+          <Upload className="w-5 h-5 text-indigo-500" /> Importar Plano de Estudos
         </h2>
         <div className="bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4 text-xs font-mono text-indigo-800 dark:text-indigo-300">
           Formato: Tema | Módulo | Aula | 00:15:00
@@ -275,9 +272,9 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="React JS | Hooks | useEffect | 00:20:00" value={input} onChange={(e) => setInput(e.target.value)} />
         <div className="mt-4 space-y-3">
           {error && <div className="flex items-center gap-2 text-red-500 text-xs font-medium"><AlertCircle className="w-4 h-4" /> {error}</div>}
-          {success && <div className="flex items-center gap-2 text-emerald-500 text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Importado (V3) com sucesso!</div>}
+          {success && <div className="flex items-center gap-2 text-emerald-500 text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Importado com sucesso!</div>}
           <button onClick={handleImport} disabled={loading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ADICIONAR AO PLANO (STRICT APPEND)'}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ADICIONAR AO PLANO'}
           </button>
         </div>
       </div>

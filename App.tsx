@@ -24,7 +24,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     document.title = 'CoursePlanner AI';
-    console.log("=== APP INICIADO - VERSÃO DEBUG 4.1 ===");
   }, []);
 
   useEffect(() => {
@@ -62,23 +61,14 @@ const App: React.FC = () => {
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: true });
 
-      if (lErr) {
-        console.error("ERRO AO BUSCAR LESSONS:", lErr);
-        throw lErr;
-      }
-
-      console.log(`DADOS RECEBIDOS DO BANCO: ${lData?.length || 0} aulas`);
-      console.log("Primeiras 3 aulas:", lData?.slice(0, 3).map(l => ({ theme: l.theme, title: l.title })));
+      if (lErr) throw lErr;
 
       const { data: logsData, error: logsErr } = await supabase
         .from('study_logs')
         .select('*')
         .eq('user_id', session.user.id);
 
-      if (logsErr) {
-        console.error("ERRO AO BUSCAR LOGS:", logsErr);
-        throw logsErr;
-      }
+      if (logsErr) throw logsErr;
 
       const mappedLessons = (lData || []).map(l => ({
         id: l.id,
@@ -98,14 +88,11 @@ const App: React.FC = () => {
         lessonTitle: l.lesson_title || ''
       }));
 
-      console.log("ATUALIZANDO ESTADO LOCAL COM:", mappedLessons.length, "aulas");
       setLessons(mappedLessons);
       setLogs(mappedLogs);
-      console.log("ESTADO ATUALIZADO COM SUCESSO");
-      console.log("========================================");
     } catch (error) {
-      console.error("ERRO CRÍTICO NO FETCH:", error);
-      alert(`Erro ao carregar dados: ${error}`);
+      console.error("Erro ao carregar dados:", error);
+      alert('Erro ao carregar dados do banco.');
     } finally {
       setIsLoading(false);
     }
@@ -117,11 +104,7 @@ const App: React.FC = () => {
       return;
     }
 
-    console.log("========================================");
-    console.log("INICIANDO IMPORTAÇÃO (DEBUG MODE)");
-    console.log("Aulas a serem importadas:", incomingLessons.length);
-    console.log("Aulas já existentes no estado:", lessons.length);
-    console.log("========================================");
+
 
     setIsLoading(true);
 
@@ -138,42 +121,25 @@ const App: React.FC = () => {
         duration_sec: l.durationSec
       }));
 
-      console.log("DADOS PREPARADOS PARA INSERT:");
-      console.log("Quantidade:", lessonsToInsert.length);
-      console.log("Primeiras 2:", lessonsToInsert.slice(0, 2).map(l => ({ id: l.id, theme: l.theme, title: l.title })));
-
       // Passo 2: INSERIR NO BANCO (SEM DELETE!)
-      console.log("EXECUTANDO INSERT NO SUPABASE...");
       const { data: insertData, error: insertErr } = await supabase
         .from('lessons')
         .insert(lessonsToInsert)
         .select();
 
       if (insertErr) {
-        console.error("ERRO NO INSERT:", insertErr);
         throw new Error(`Falha ao inserir: ${insertErr.message}`);
       }
 
-      console.log("INSERT CONCLUÍDO COM SUCESSO!");
-      console.log("Dados inseridos retornados:", insertData?.length);
-
       // Passo 3: BUSCAR TUDO DE NOVO
-      console.log("AGUARDANDO 500ms ANTES DO FETCH...");
       await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log("INICIANDO FETCH COMPLETO DO BANCO...");
       await fetchUserData();
 
-      console.log("IMPORTAÇÃO FINALIZADA COM SUCESSO!");
-      console.log("========================================");
-
       setActiveTab('plan');
-      alert(`✅ SUCESSO! ${lessonsToInsert.length} aulas foram ADICIONADAS.\n\nVerifique o console (F12) para detalhes técnicos.`);
+      alert('✅ SUCESSO! As aulas foram adicionadas ao seu plano.');
     } catch (error: any) {
-      console.error("========================================");
-      console.error("ERRO NA IMPORTAÇÃO:", error);
-      console.error("========================================");
-      alert(`❌ Erro: ${error.message}\n\nAbra o console (F12) para mais detalhes.`);
+      console.error("Erro na importação:", error);
+      alert(`❌ Erro ao importar: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -301,11 +267,11 @@ const App: React.FC = () => {
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="bg-indigo-600 p-1.5 rounded-lg"><BookOpen className="w-5 h-5 text-white" /></div>
-            <h1 className="font-bold text-lg">CoursePlanner <span className="text-indigo-500">AI</span> <span className="text-xs text-red-500">DEBUG v4.1</span></h1>
+            <h1 className="font-bold text-lg">CoursePlanner <span className="text-indigo-500">AI</span></h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aulas: {lessons.length}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bem-vindo</p>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{session.user.user_metadata?.full_name || 'Usuário'}</p>
             </div>
             <img src={session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`} alt="User" className="w-10 h-10 rounded-full border-2 border-indigo-500 object-cover" />
@@ -318,7 +284,6 @@ const App: React.FC = () => {
           <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent"></div>
             <p className="text-sm font-bold text-slate-700 dark:text-white">Processando...</p>
-            <p className="text-xs text-slate-500">Abra o Console (F12) para ver logs</p>
           </div>
         </div>
       )}
