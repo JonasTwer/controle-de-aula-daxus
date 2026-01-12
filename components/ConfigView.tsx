@@ -6,6 +6,7 @@ import { Lesson, StudyLog } from '../types';
 import { parseDurationToSeconds, formatDateLocal } from '../utils';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../imageUtils';
+import toast from 'react-hot-toast';
 
 interface ConfigViewProps {
   onSaveData: (lessons: Lesson[]) => Promise<void>;
@@ -266,10 +267,11 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         <h2 className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
           <Upload className="w-5 h-5 text-indigo-500" /> Importar Plano de Estudos
         </h2>
-        <div className="bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4 text-xs font-mono text-indigo-800 dark:text-indigo-300">
-          Formato: Tema | Módulo | Aula | 00:15:00
+        <div className="bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Formato Esperado</p>
+          <p className="text-xs text-indigo-800 dark:text-indigo-300 font-mono">Meta | Matéria | Título da Aula | 00:15:00</p>
         </div>
-        <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="React JS | Hooks | useEffect | 00:20:00" value={input} onChange={(e) => setInput(e.target.value)} />
+        <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="Direito Constitucional | Direitos Fundamentais | Art. 5º da Constituição Federal | 00:15:00" value={input} onChange={(e) => setInput(e.target.value)} />
         <div className="mt-4 space-y-3">
           {error && <div className="flex items-center gap-2 text-red-500 text-xs font-medium"><AlertCircle className="w-4 h-4" /> {error}</div>}
           {success && <div className="flex items-center gap-2 text-emerald-500 text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Importado com sucesso!</div>}
@@ -307,7 +309,41 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[150px]">{course}</span>
                   <span className="text-[10px] text-slate-400">{lessons.filter(l => l.theme === course).length} aulas</span>
                 </div>
-                <button onClick={async () => { if (window.confirm(`Apagar curso "${course}"?`)) { await onDeleteCourse(course); fetchStats(); } }} className="p-2 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                <button
+                  onClick={async () => {
+                    toast((t) => (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Apagar curso "{course}"?</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">Isso removerá todas as aulas e registros deste curso.</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => toast.dismiss(t.id)}
+                            className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={async () => {
+                              toast.dismiss(t.id);
+                              await onDeleteCourse(course);
+                              fetchStats();
+                            }}
+                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    ), {
+                      duration: Infinity,
+                      style: {
+                        minWidth: '300px',
+                        background: '#fff',
+                        color: '#000',
+                      },
+                    });
+                  }}
+                  className="p-2 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
               </div>
             ))}
           </div>
