@@ -190,19 +190,29 @@ const App: React.FC = () => {
   const handleSaveLog = async (logData: StudyLog) => {
     if (!session?.user?.id) return;
     setIsLoading(true);
+
     try {
       if (logData.status === 'completed') {
-        const { error } = await supabase.from('study_logs').upsert({
+        const dataToInsert = {
           user_id: session.user.id,
           lesson_id: logData.lessonId,
           date: logData.date,
           duration_sec: logData.durationSec,
           status: 'completed',
-          notes: logData.notes,
+          notes: logData.notes || '',
           lesson_title: logData.lessonTitle
-        }, { onConflict: 'user_id,lesson_id' });
+        };
 
-        if (error) throw error;
+        console.log('[DEBUG] Tentando salvar:', dataToInsert);
+
+        const { error } = await supabase
+          .from('study_logs')
+          .upsert(dataToInsert, { onConflict: 'user_id,lesson_id' });
+
+        if (error) {
+          console.error('[ERROR] Erro do Supabase:', error);
+          throw new Error(`Erro ao salvar: ${error.message} (Código: ${error.code})`);
+        }
 
         await fetchUserData();
         setModalLesson(null);
@@ -211,9 +221,16 @@ const App: React.FC = () => {
           icon: '✅'
         });
       } else {
-        const { error } = await supabase.from('study_logs').delete().eq('user_id', session.user.id).eq('lesson_id', logData.lessonId);
+        const { error } = await supabase
+          .from('study_logs')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('lesson_id', logData.lessonId);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[ERROR] Erro ao deletar:', error);
+          throw new Error(`Erro ao atualizar: ${error.message}`);
+        }
 
         await fetchUserData();
         setModalLesson(null);
@@ -222,8 +239,10 @@ const App: React.FC = () => {
         });
       }
     } catch (error: any) {
-      console.error('[ERROR] Erro em handleSaveLog:', error);
-      toast.error("Erro ao salvar progresso no Plano de Estudo.");
+      console.error('[ERROR] Erro completo:', error);
+      toast.error(error.message || "Erro ao salvar progresso no Plano de Estudo.", {
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
     }
