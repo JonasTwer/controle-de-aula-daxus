@@ -68,7 +68,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
       setRealTimeLessons(lessonsCount || 0);
       setRealTimeLogs(logsCount || 0);
     } catch (e) {
-      console.error('Erro ao buscar estatísticas:', e);
+      // Silent fail - não é crítico
     }
   };
 
@@ -156,8 +156,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         duration: 3000
       });
     } catch (e: any) {
-      console.error('Erro no crop:', e);
-      toast.error(e.message || 'Erro ao processar imagem.', { id: toastId });
+      toast.error('Erro ao processar imagem.', { id: toastId });
     } finally {
       setLoading(false);
     }

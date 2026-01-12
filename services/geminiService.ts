@@ -7,8 +7,6 @@ if (!apiKey) {
   console.error('CRITICAL ERROR: VITE_GEMINI_API_KEY is not defined in the environment variables! Mentor AI will not work.');
 }
 
-console.log('Gemini Service Initialization - Key found:', !!apiKey);
-
 const genAI = new GoogleGenerativeAI(apiKey || "");
 
 export const getStudyAdvice = async (prompt: string, context: string) => {

@@ -90,7 +90,6 @@ const App: React.FC = () => {
       setLessons(mappedLessons);
       setLogs(mappedLogs);
     } catch (error: any) {
-      console.error("Erro ao carregar dados:", error);
       toast.error(`Erro: ${error.message || 'Falha na conexão com o banco'}`);
     } finally {
       setIsLoading(false);
@@ -158,7 +157,7 @@ const App: React.FC = () => {
         icon: '✅',
       });
     } catch (error: any) {
-      console.error("Erro na importação:", error);
+
       toast.error(`Erro ao importar: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -203,15 +202,12 @@ const App: React.FC = () => {
           lesson_title: logData.lessonTitle
         };
 
-        console.log('[DEBUG] Tentando salvar:', dataToInsert);
-
         const { error } = await supabase
           .from('study_logs')
           .upsert(dataToInsert, { onConflict: 'user_id,lesson_id' });
 
         if (error) {
-          console.error('[ERROR] Erro do Supabase:', error);
-          throw new Error(`Erro ao salvar: ${error.message} (Código: ${error.code})`);
+          throw new Error(`Erro ao salvar: ${error.message}`);
         }
 
         await fetchUserData();
@@ -228,7 +224,6 @@ const App: React.FC = () => {
           .eq('lesson_id', logData.lessonId);
 
         if (error) {
-          console.error('[ERROR] Erro ao deletar:', error);
           throw new Error(`Erro ao atualizar: ${error.message}`);
         }
 
@@ -239,9 +234,8 @@ const App: React.FC = () => {
         });
       }
     } catch (error: any) {
-      console.error('[ERROR] Erro completo:', error);
-      toast.error(error.message || "Erro ao salvar progresso no Plano de Estudo.", {
-        duration: 5000
+      toast.error(error.message || "Erro ao salvar progresso.", {
+        duration: 4000
       });
     } finally {
       setIsLoading(false);
