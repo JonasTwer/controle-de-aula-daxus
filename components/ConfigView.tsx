@@ -203,23 +203,48 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
     setLoading(true);
     setProfileError('');
     setProfileSuccess(false);
+
     try {
+      // 1. Atualizar metadados do perfil (Nome e Foto)
       const { error: profileError } = await supabase.auth.updateUser({
         data: { full_name: displayName, avatar_url: avatarUrl }
       });
       if (profileError) throw profileError;
 
+      // 2. Tentar atualizar senha SÓ SE o campo tiver valor digitado manualmente
       const passwordToSet = newPassword.trim();
       if (passwordToSet !== '') {
-        if (passwordToSet.length < 6) throw new Error('Mínimo 6 caracteres.');
+        if (passwordToSet.length < 6) {
+          throw new Error('A senha deve ter no mínimo 6 caracteres.');
+        }
         const { error: authError } = await supabase.auth.updateUser({ password: passwordToSet });
-        if (authError && !authError.message.includes('different')) throw authError;
+        if (authError) {
+          // Se for erro de "senha igual", avisa mas NÃO cancela a atualização do perfil
+          if (authError.message.includes('different')) {
+            toast.success('Perfil atualizado! A senha foi mantida (pois era igual à anterior).', {
+              duration: 4000,
+            });
+          } else {
+            throw authError; // Outros erros de senha param o processo
+          }
+        } else {
+          toast.success('Perfil e senha atualizados com sucesso!', {
+            duration: 3000,
+            icon: '✅',
+          });
+        }
+      } else {
+        toast.success('Perfil atualizado com sucesso!', {
+          duration: 3000,
+          icon: '✅',
+        });
       }
-      setProfileSuccess(true);
+
       setNewPassword('');
-      setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err: any) {
-      setProfileError(err.message || 'Erro ao atualizar.');
+      toast.error(err.message || 'Erro ao atualizar dados.', {
+        duration: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -247,16 +272,29 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
                 <div className="flex items-center gap-4 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl">
                   {previewUrl ? <img src={previewUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500" /> : <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-[10px] font-bold">SEM FOTO</div>}
                   <label className="flex-1 cursor-pointer">
-                    <span className="inline-block px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300">Trocar Foto</span>
+                    <span className="inline-block px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-all">Trocar Foto</span>
                     <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                   </label>
                 </div>
               </div>
-              <button onClick={handleUpdateProfile} disabled={loading} className="w-full py-3 bg-slate-800 dark:bg-slate-600 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Alterações'}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Alterar Senha (opcional)</label>
+                <input
+                  type="password"
+                  id="new-password-field"
+                  name="new-password-field"
+                  autoComplete="new-password"
+                  placeholder="Nova senha (deixe em branco para manter)"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white placeholder:text-slate-400"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+
+              <button onClick={handleUpdateProfile} disabled={loading} className="w-full mt-2 py-3 bg-slate-800 dark:bg-slate-600 hover:bg-slate-900 dark:hover:bg-slate-500 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-100 dark:shadow-none">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Atualizar Dados'}
               </button>
-              {profileError && <p className="text-[10px] text-red-500 font-bold ml-1">{profileError}</p>}
-              {profileSuccess && <p className="text-[10px] text-emerald-500 font-bold ml-1">Dados atualizados!</p>}
             </div>
           </div>
           <button onClick={() => supabase.auth.signOut()} className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl font-bold text-sm hover:bg-red-100 transition-all flex items-center justify-center gap-2"><LogOut className="w-4 h-4" /> Sair</button>
