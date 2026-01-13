@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, User, Bot, Loader2 } from 'lucide-react';
-import { getStudyAdvice } from '../services/geminiService';
+import { getStudyAdvice } from '../services/groqService';
 
 interface AssistantViewProps {
   contextData: any;
