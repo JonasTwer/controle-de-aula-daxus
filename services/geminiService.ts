@@ -7,7 +7,46 @@ if (!apiKey) {
   console.error('CRITICAL ERROR: VITE_GEMINI_API_KEY is not defined in the environment variables! Mentor AI will not work.');
 }
 
-const genAI = new GoogleGenerativeAI(apiKey || "");
+// Lista de modelos para tentar (em ordem de preferência)
+const MODEL_FALLBACK = [
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-flash",
+  "gemini-1.0-pro-latest",
+  "gemini-1.0-pro",
+  "gemini-pro"
+];
+
+let workingModel: string | null = null;
+
+// Função para testar qual modelo funciona
+async function findWorkingModel(): Promise<string> {
+  if (workingModel) return workingModel;
+
+  for (const model of MODEL_FALLBACK) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "teste" }] }]
+          })
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Modelo funcionando: ${model}`);
+        workingModel = model;
+        return model;
+      }
+    } catch (e) {
+      console.log(`❌ Modelo ${model} falhou, tentando próximo...`);
+    }
+  }
+
+  throw new Error("Nenhum modelo Gemini disponível para esta chave de API");
+}
 
 export const getStudyAdvice = async (prompt: string, context: string) => {
   if (!apiKey || apiKey === "") {
@@ -16,16 +55,33 @@ export const getStudyAdvice = async (prompt: string, context: string) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-pro",
-      systemInstruction: "Você é o mentor de estudos do CoursePlanner AI. Seu objetivo é ajudar estudantes a gerenciar seu currículo, sugerir estratégias de aprendizagem e fornecer motivação. Responda sempre em Português, de forma prestativa, concisa (3-4 frases) e acionável. Use linguagem clara.",
-    });
+    // Encontra um modelo que funcione
+    const model = await findWorkingModel();
 
-    const fullPrompt = `Contexto do Estudante:\n${context}\n\nPergunta do Usuário: ${prompt}`;
+    const systemInstruction = "Você é o mentor de estudos do CoursePlanner AI. Seu objetivo é ajudar estudantes a gerenciar seu currículo, sugerir estratégias de aprendizagem e fornecer motivação. Responda sempre em Português, de forma prestativa, concisa (3-4 frases) e acionável. Use linguagem clara.";
 
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const fullPrompt = `${systemInstruction}\n\nContexto do Estudante:\n${context}\n\nPergunta do Usuário: ${prompt}`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: fullPrompt }]
+          }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(JSON.stringify(errorData));
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) throw new Error("Resposta vazia do modelo.");
 
@@ -34,19 +90,18 @@ export const getStudyAdvice = async (prompt: string, context: string) => {
     console.error("Gemini API Error Details:", error);
     let errorMessage = "Erro ao conectar com o assistente.";
 
-    // Capture specific error types
     const errorDetails = error instanceof Error ? error.message : String(error);
 
-    if (errorDetails.includes("API_KEY_INVALID")) {
-      errorMessage = "Chave API INVÁLIDA.";
+    if (errorDetails.includes("API_KEY_INVALID") || errorDetails.includes("expired")) {
+      errorMessage = "Chave API INVÁLIDA ou EXPIRADA.";
     } else if (errorDetails.includes("quota")) {
       errorMessage = "Cota de uso EXCEDIDA.";
     } else if (errorDetails.includes("location")) {
       errorMessage = "Região NÃO SUPORTADA pela Google AI.";
     } else if (errorDetails.includes("not found")) {
-      errorMessage = "Modelo de IA não encontrado ou sem acesso nesta chave.";
+      errorMessage = "Nenhum modelo de IA disponível para esta conta.";
     }
 
-    return `${errorMessage} Por favor, confira se a chave VITE_GEMINI_API_KEY está configurada corretamente nas variáveis de ambiente. \n\n(Erro: ${errorDetails})`;
+    return `${errorMessage} Por favor, verifique:\n1. Se a chave está correta no .env\n2. Se o projeto Google Cloud tem billing ativado\n3. Se sua região é suportada\n\n(Erro: ${errorDetails.substring(0, 200)}...)`;
   }
 };

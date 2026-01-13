@@ -29,12 +29,52 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Check if URL contains recovery tokens
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const isRecoveryLink = hashParams.get('type') === 'recovery' || window.location.hash.includes('type=recovery');
+
+    if (isRecoveryLink) {
+      console.log('Recovery link detected in URL!');
+      setIsRecovering(true);
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Session loaded:', session);
       setSession(session);
-      if (_event === 'PASSWORD_RECOVERY') setIsRecovering(true);
-      if (_event === 'SIGNED_IN') setActiveTab('dashboard');
+
+      // Double check if this is a recovery session
+      if (session && isRecoveryLink) {
+        console.log('Setting recovery mode from session check');
+        setIsRecovering(true);
+      }
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, 'Session:', session);
+      setSession(session);
+
+      // Detect password recovery
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('PASSWORD_RECOVERY event detected!');
+        setIsRecovering(true);
+      }
+
+      // Also check on SIGNED_IN if it's a recovery flow
+      if (event === 'SIGNED_IN') {
+        const currentHashParams = new URLSearchParams(window.location.hash.substring(1));
+        const isStillRecovery = currentHashParams.get('type') === 'recovery' || window.location.hash.includes('type=recovery');
+
+        if (isStillRecovery) {
+          console.log('SIGNED_IN with recovery type - showing password update screen');
+          setIsRecovering(true);
+        } else {
+          console.log('Normal SIGNED_IN - going to dashboard');
+          setIsRecovering(false);
+          setActiveTab('dashboard');
+        }
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 

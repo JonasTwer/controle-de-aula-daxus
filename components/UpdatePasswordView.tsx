@@ -40,8 +40,9 @@ const UpdatePasswordView: React.FC = () => {
             if (updateError) throw updateError;
             setSuccess(true);
 
-            // Redirect to login after 3 seconds
-            setTimeout(() => {
+            // Sign out the user and redirect to login after 3 seconds
+            setTimeout(async () => {
+                await supabase.auth.signOut();
                 window.location.href = window.location.origin;
             }, 3000);
 

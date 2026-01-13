@@ -34,7 +34,7 @@ const AuthView: React.FC = () => {
                 if (signInError) throw signInError;
             } else if (mode === 'forgot-password') {
                 const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/#recovery`,
+                    redirectTo: window.location.origin,
                 });
                 if (resetError) throw resetError;
                 setMessage('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
