@@ -280,9 +280,21 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         console.log('📊 Total de erros:', erros.length);
         console.log('📊 Linhas finais:', processedLines);
 
-        // Se houver erros, mostrar TODOS de uma vez
+        // Se houver erros, mostrar TODOS de uma vez com UX profissional
         if (erros.length > 0) {
-          const mensagemErro = `Encontrados ${erros.length} erro(s) no arquivo:\n\n${erros.slice(0, 5).join('\n')}${erros.length > 5 ? `\n\n... e mais ${erros.length - 5} erro(s).` : ''}`;
+          // Título inteligente: ajusta singular/plural automaticamente
+          const tituloErro = erros.length === 1
+            ? '⚠️ 1 erro encontrado:'
+            : `⚠️ ${erros.length} erros encontrados:`;
+
+          // Mostra até 5 erros + indica quantos foram omitidos
+          const listaErros = erros.slice(0, 5).join('\n');
+          const errosRestantes = erros.length > 5
+            ? `\n\n... e mais ${erros.length - 5} ${erros.length - 5 === 1 ? 'erro' : 'erros'}.`
+            : '';
+
+          const mensagemErro = `${tituloErro}\n\n${listaErros}${errosRestantes}`;
+
           toast.error(mensagemErro, {
             duration: 8000,
             style: {
@@ -294,20 +306,25 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           return;
         }
 
-        // Se não houver dados válidos
+        // Se não houver dados válidos (edge case)
         if (processedLines.length === 0) {
-          toast.error('Nenhum dado válido encontrado no Excel. Verifique se o arquivo contém linhas preenchidas após o cabeçalho.', {
+          toast.error('⚠️ Nenhum dado válido encontrado no Excel. Verifique se o arquivo contém linhas preenchidas após o cabeçalho.', {
             duration: 4000
           });
           return;
         }
 
-        // Sucesso! Inserir texto processado na textarea
+        // SUCESSO! Português perfeito com plural/singular correto
+        const qtd = processedLines.length;
+        const textoGramatical = qtd === 1 ? 'linha importada' : 'linhas importadas';
+        const mensagemSucesso = `✅ ${qtd} ${textoGramatical} com sucesso! Revise e clique em "Adicionar ao Plano".`;
+
+        // Inserir texto processado na textarea
         const finalText = processedLines.join('\n');
         console.log('✅ Texto final para textarea:', finalText);
         setInput(finalText);
 
-        toast.success(`✅ ${processedLines.length} linha(s) importada(s) com sucesso! Revise e clique em "Adicionar ao Plano".`, {
+        toast.success(mensagemSucesso, {
           duration: 4000,
           icon: '📊'
         });
