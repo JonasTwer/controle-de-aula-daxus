@@ -15,6 +15,40 @@ interface DashboardViewProps {
   logs: StudyLog[];
 }
 
+// Função para formatar minutos em formato "Xh Ymin" ou "Xmin"
+const formatMinutesToReadable = (minutes: number): string => {
+  if (minutes < 60) {
+    return `${minutes}min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${remainingMinutes}min`;
+};
+
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const minutes = payload[0].value;
+    return (
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-md">
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">
+          Tempo Estudado
+        </p>
+        <p className="text-lg font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+          {formatMinutesToReadable(minutes)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
   // Filtering only completed logs and sorting to get the 5 most recent activities
   const recentActivity = logs
@@ -176,7 +210,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
           </div>
         </div>
 
-        {/* RENDIMENTO SEMANAL (Bar Chart) - Retido para valor analítico */}
+        {/* RENDIMENTO SEMANAL (Bar Chart) - Com Tooltip Customizado */}
         <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 mb-8 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-indigo-500" /> Rendimento Semanal
@@ -186,7 +220,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
               <BarChart data={last7Days}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} stroke="#94a3b8" />
                 <YAxis hide />
-                <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                 <Bar dataKey="minutes" fill="#6366f1" radius={[8, 8, 8, 8]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
