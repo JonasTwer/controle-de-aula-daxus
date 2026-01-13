@@ -201,8 +201,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[] = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-        console.log('📊 Total de linhas no Excel:', jsonData.length);
-        console.log('📊 Dados brutos:', jsonData);
+        // Processando dados do Excel
 
         // Lista de erros e dados válidos
         const erros: string[] = [];
@@ -214,11 +213,11 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           const row = jsonData[i];
           const numeroLinha = i + 1; // Linha real no Excel (para mensagens)
 
-          console.log(`Processando linha ${numeroLinha}:`, row);
+          // Validando linha ${numeroLinha}
 
           // Ignorar linhas completamente vazias
           if (!row || row.length === 0 || (row.every((cell: any) => !cell))) {
-            console.log(`⚠️ Linha ${numeroLinha}: Vazia (ignorada)`);
+            // Linha vazia ignorada
             continue;
           }
 
@@ -227,29 +226,29 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           const assunto = String(row[2] || '').trim();
           const tempoRaw = row[3]; // Não converter ainda para validar corretamente
 
-          console.log(`Linha ${numeroLinha} - Meta: "${meta}", Matéria: "${materia}", Assunto: "${assunto}", Tempo: "${tempoRaw}"`);
+          // Validando campos
 
           // 1. Validação de Campos Obrigatórios
           if (!meta) {
             erros.push(`Linha ${numeroLinha}: Campo 'Meta' está vazio.`);
-            console.log(`❌ Linha ${numeroLinha}: Meta vazia`);
+            // Meta vazia
             continue;
           }
           if (!materia) {
             erros.push(`Linha ${numeroLinha}: Campo 'Matéria' está vazio.`);
-            console.log(`❌ Linha ${numeroLinha}: Matéria vazia`);
+            // Matéria vazia
             continue;
           }
           if (!assunto) {
             erros.push(`Linha ${numeroLinha}: Campo 'Assunto' está vazio.`);
-            console.log(`❌ Linha ${numeroLinha}: Assunto vazio`);
+            // Assunto vazio
             continue;
           }
 
           // 2. Validação Rigorosa de Tempo
           if (!tempoRaw && tempoRaw !== 0) {
             erros.push(`Linha ${numeroLinha}: Campo 'Tempo' está vazio.`);
-            console.log(`❌ Linha ${numeroLinha}: Tempo vazio`);
+            // Tempo vazio
             continue;
           }
 
@@ -259,7 +258,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           // Proibir letras no campo de tempo
           if (temLetras.test(tempoStr)) {
             erros.push(`Linha ${numeroLinha}: Campo 'Tempo' inválido ('${tempoStr}'). Use apenas números ou formato HH:MM:SS.`);
-            console.log(`❌ Linha ${numeroLinha}: Tempo contém letras`);
+            // Tempo inválido
             continue;
           }
 
@@ -272,30 +271,28 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;
             tempoFinal = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-            console.log(`🔄 Linha ${numeroLinha}: Tempo convertido de ${tempoStr}min para ${tempoFinal}`);
+            // Tempo convertido
           } else if (/^\d{1,2}:\d{2}$/.test(tempoStr)) {
             // Formato MM:SS
             tempoFinal = `00:${tempoStr}:00`;
-            console.log(`🔄 Linha ${numeroLinha}: Tempo convertido de ${tempoStr} para ${tempoFinal}`);
+            // Formato normalizado
           } else if (/^\d{1,2}:\d{2}:\d{2}$/.test(tempoStr)) {
             // Já está em HH:MM:SS
             tempoFinal = tempoStr;
           } else {
             // Formato inválido
             erros.push(`Linha ${numeroLinha}: Formato de tempo inválido ('${tempoStr}'). Use: minutos (30), MM:SS (45:00) ou HH:MM:SS (01:30:00).`);
-            console.log(`❌ Linha ${numeroLinha}: Formato de tempo inválido`);
+            // Formato inválido
             continue;
           }
 
           // Se passou em todas as validações, adiciona aos dados válidos
           const line = `${meta} | ${materia} | ${assunto} | ${tempoFinal}`;
           processedLines.push(line);
-          console.log(`✅ Linha ${numeroLinha} válida:`, line);
+          // Linha válida
         }
 
-        console.log('📊 Total de linhas processadas:', processedLines.length);
-        console.log('📊 Total de erros:', erros.length);
-        console.log('📊 Linhas finais:', processedLines);
+        // Processamento concluído
 
         // ========================================
         // SISTEMA DE FEEDBACK PADRONIZADO (Imagem 9)
@@ -358,7 +355,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
         // Inserir texto processado na textarea
         const finalText = processedLines.join('\n');
-        console.log('✅ Texto final para textarea:', finalText);
+        // Dados validados e prontos
         setInput(finalText);
 
         // Exibir usando o FeedbackCard
