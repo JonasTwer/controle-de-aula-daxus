@@ -282,18 +282,19 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
         // ========================================
         // PADRÃO VISUAL UNIFICADO: Título + Descrição
+        // (SEM emojis no texto - o toast já tem ícone próprio)
         // ========================================
 
         // CENÁRIO 1: ERROS ENCONTRADOS
         if (erros.length > 0) {
           // Título: Curto e direto com contagem correta
           const termoErro = erros.length === 1 ? 'erro encontrado' : 'erros encontrados';
-          const tituloErro = `⚠️ ${erros.length} ${termoErro}`;
+          const tituloErro = `${erros.length} ${termoErro}`;
 
           // Descrição: Lista limpa de erros (até 5)
           const listaErros = erros.slice(0, 5).join('\n');
           const errosOmitidos = erros.length > 5
-            ? `\n\n... e mais ${erros.length - 5} ${erros.length - 5 === 1 ? 'erro' : 'erros'}.`
+            ? `\n... e mais ${erros.length - 5} ${erros.length - 5 === 1 ? 'erro' : 'erros'}.`
             : '';
 
           // Estrutura Final: Título + quebra + Descrição
@@ -313,7 +314,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         // CENÁRIO 2: ARQUIVO VAZIO (Edge Case)
         if (processedLines.length === 0) {
           // Título + Descrição orientativa
-          const mensagemVazio = `⚠️ Nenhum dado válido encontrado\n\nVerifique se o arquivo contém linhas preenchidas após o cabeçalho.`;
+          const mensagemVazio = `Nenhum dado válido encontrado\n\nVerifique se o arquivo contém linhas preenchidas após o cabeçalho.`;
 
           toast.error(mensagemVazio, {
             duration: 4000,
@@ -328,7 +329,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         // Título: Contagem correta (singular/plural)
         const qtd = processedLines.length;
         const termoSucesso = qtd === 1 ? 'linha importada' : 'linhas importadas';
-        const tituloSucesso = `✅ ${qtd} ${termoSucesso}`;
+        const tituloSucesso = `${qtd} ${termoSucesso}`;
 
         // Descrição: Próximo passo claro
         const descricaoSucesso = 'Revise os dados e clique em "Adicionar ao Plano".';
@@ -343,7 +344,6 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
         toast.success(mensagemSucesso, {
           duration: 4000,
-          icon: '📊',
           style: {
             whiteSpace: 'pre-line'
           }
@@ -351,7 +351,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
       } catch (error: any) {
         // Erro crítico de processamento
-        const mensagemCritica = `⚠️ Falha ao processar arquivo\n\nVerifique se o formato está correto (.xlsx).`;
+        const mensagemCritica = `Falha ao processar arquivo\n\nVerifique se o formato está correto (.xlsx).`;
 
         toast.error(mensagemCritica, {
           duration: 4000,
