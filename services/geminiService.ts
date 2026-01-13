@@ -43,6 +43,8 @@ export const getStudyAdvice = async (prompt: string, context: string) => {
       errorMessage = "Cota de uso EXCEDIDA.";
     } else if (errorDetails.includes("location")) {
       errorMessage = "Região NÃO SUPORTADA pela Google AI.";
+    } else if (errorDetails.includes("not found")) {
+      errorMessage = "Modelo de IA não encontrado ou sem acesso nesta chave.";
     }
 
     return `${errorMessage} Por favor, confira se a chave VITE_GEMINI_API_KEY está configurada corretamente nas variáveis de ambiente. \n\n(Erro: ${errorDetails})`;
