@@ -13,6 +13,7 @@ import { getTodayDateString, formatSecondsToHHMM, formatDateLocal } from './util
 import { Session } from '@supabase/supabase-js';
 import UpdatePasswordView from './components/UpdatePasswordView';
 import toast, { Toaster } from 'react-hot-toast';
+import { showFeedbackCard } from './utils/feedbackUtils';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -132,7 +133,11 @@ const App: React.FC = () => {
       setLessons(mappedLessons);
       setLogs(mappedLogs);
     } catch (error: any) {
-      toast.error(`Erro: ${error.message || 'Falha na conexão com o banco'}`);
+      showFeedbackCard({
+        type: 'error',
+        title: 'Erro ao carregar dados',
+        description: error.message || 'Falha na conexão com o banco. Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +154,11 @@ const App: React.FC = () => {
 
   const handleSaveCurriculum = async (incomingLessons: Lesson[]) => {
     if (!session?.user?.id) {
-      toast.error('Sessão expirada. Faça login novamente.');
+      showFeedbackCard({
+        type: 'error',
+        title: 'Sessão expirada',
+        description: 'Por favor, faça login novamente para continuar.'
+      });
       return;
     }
 
@@ -194,13 +203,20 @@ const App: React.FC = () => {
       await fetchUserData();
 
       setActiveTab('plan');
-      toast.success('Aulas adicionadas ao seu Plano de Estudo!', {
-        duration: 3000,
-        icon: '✅',
+      showFeedbackCard({
+        type: 'success',
+        title: 'Aulas adicionadas',
+        description: 'O conteúdo já está disponível no seu cronograma.'
+      }, {
+        duration: 4000
       });
     } catch (error: any) {
 
-      toast.error(`Erro ao importar: ${error.message}`);
+      showFeedbackCard({
+        type: 'error',
+        title: 'Falha ao importar',
+        description: error.message || 'Não foi possível adicionar as aulas ao plano.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -220,9 +236,17 @@ const App: React.FC = () => {
       }
 
       await fetchUserData();
-      toast.success('Curso excluído com sucesso!');
+      showFeedbackCard({
+        type: 'success',
+        title: 'Curso excluído',
+        description: 'Todas as aulas deste curso foram removidas do seu plano.'
+      });
     } catch (error) {
-      toast.error("Erro ao excluir curso.");
+      showFeedbackCard({
+        type: 'error',
+        title: 'Erro ao excluir',
+        description: 'Não foi possível remover o curso. Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -254,9 +278,12 @@ const App: React.FC = () => {
 
         await fetchUserData();
         setModalLesson(null);
-        toast.success('Aula concluída com sucesso! 🎉', {
-          duration: 3000,
-          icon: '✅'
+        showFeedbackCard({
+          type: 'success',
+          title: 'Aula concluída',
+          description: 'Seu progresso foi salvo e o histórico atualizado. Continue assim! 🎉'
+        }, {
+          duration: 4000
         });
       } else {
         const { error } = await supabase
@@ -271,13 +298,21 @@ const App: React.FC = () => {
 
         await fetchUserData();
         setModalLesson(null);
-        toast.success('Status da aula atualizado.', {
-          duration: 2000
+        showFeedbackCard({
+          type: 'success',
+          title: 'Status atualizado',
+          description: 'O progresso desta aula foi salvo no seu histórico.'
+        }, {
+          duration: 3000
         });
       }
     } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar progresso.", {
-        duration: 4000
+      showFeedbackCard({
+        type: 'error',
+        title: 'Erro ao salvar',
+        description: error.message || 'Não foi possível salvar o progresso da aula.'
+      }, {
+        duration: 5000
       });
     } finally {
       setIsLoading(false);
@@ -294,9 +329,17 @@ const App: React.FC = () => {
           await supabase.from('lessons').delete().eq('user_id', session.user.id);
           await fetchUserData();
           setActiveTab('dashboard');
-          toast.success('Seu Plano de Estudo foi limpo.');
+          showFeedbackCard({
+            type: 'success',
+            title: 'Plano limpo',
+            description: 'Todos os dados foram removidos com sucesso.'
+          });
         } catch (error) {
-          toast.error('Erro ao limpar dados.');
+          showFeedbackCard({
+            type: 'error',
+            title: 'Erro ao limpar',
+            description: 'Não foi possível remover os dados. Tente novamente.'
+          });
         } finally {
           setIsLoading(false);
           setConfirmDialog(null);
@@ -479,27 +522,43 @@ const App: React.FC = () => {
       />
 
       {confirmDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-700/50">
+
+            {/* CABEÇALHO com Ícone e Título */}
+            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-700/50">
+              {/* Ícone de Alerta em Círculo Vermelho/Escuro */}
+              <div className="w-16 h-16 rounded-full bg-red-900/40 flex items-center justify-center flex-shrink-0">
+                <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Confirmar Ação</h3>
+
+              {/* Título com Font-Black para Efeito Relevo */}
+              <h3 className="text-2xl font-black text-white tracking-tight">
+                Confirmar exclusão
+              </h3>
             </div>
-            <p className="text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">{confirmDialog.message}</p>
-            <div className="flex gap-3">
+
+            {/* CORPO - Mensagem de Alerta */}
+            <p className="text-slate-300 text-base leading-relaxed mb-8">
+              <span className="font-bold text-white">Atenção:</span> esta ação é irreversível. <span className="font-bold text-white uppercase">Todos</span> os dados serão excluídos permanentemente.
+            </p>
+
+            {/* BOTÕES DE AÇÃO */}
+            <div className="flex gap-4">
+              {/* Botão Secundário (Cancelar) */}
               <button
                 onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
+                className="flex-1 px-6 py-4 bg-slate-700/50 text-slate-200 rounded-2xl font-bold text-base hover:bg-slate-700 transition-all"
               >
                 Cancelar
               </button>
+
+              {/* Botão Primário (Confirmar - Vermelho/Danger) */}
               <button
                 onClick={() => confirmDialog.onConfirm()}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-lg shadow-red-200 dark:shadow-none"
+                className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl font-bold text-base hover:bg-red-700 transition-all shadow-lg shadow-red-900/50"
               >
                 Confirmar
               </button>

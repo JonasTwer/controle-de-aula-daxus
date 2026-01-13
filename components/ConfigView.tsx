@@ -8,6 +8,8 @@ import Cropper from 'react-easy-crop';
 import getCroppedImg from '../imageUtils';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { showFeedbackCard, parseImportError } from '../utils/feedbackUtils';
+import { FeedbackError } from './FeedbackCard';
 
 interface ConfigViewProps {
   onSaveData: (lessons: Lesson[]) => Promise<void>;
@@ -153,12 +155,21 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
       setShowCropper(false);
       setCroppingImage(null);
 
-      toast.success('Foto de perfil atualizada com sucesso!', {
-        id: toastId,
-        duration: 3000
+      showFeedbackCard({
+        type: 'success',
+        title: 'Foto de perfil atualizada',
+        description: 'Sua nova imagem já foi salva e está visível.'
+      }, {
+        duration: 4000
       });
+      toast.dismiss(toastId);
     } catch (e: any) {
-      toast.error('Erro ao processar imagem.', { id: toastId });
+      showFeedbackCard({
+        type: 'error',
+        title: 'Erro ao processar imagem',
+        description: 'Não foi possível atualizar a foto. Tente novamente.'
+      });
+      toast.dismiss(toastId);
     } finally {
       setLoading(false);
     }
@@ -169,7 +180,13 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
     a.href = '/template_plano.xlsx';
     a.download = 'template_plano.xlsx';
     a.click();
-    toast.success('Template baixado com sucesso!', { duration: 2000 });
+    showFeedbackCard({
+      type: 'success',
+      title: 'Template baixado',
+      description: 'O arquivo modelo está pronto para uso.'
+    }, {
+      duration: 3000
+    });
   };
 
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,46 +298,51 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         console.log('📊 Linhas finais:', processedLines);
 
         // ========================================
-        // PADRÃO VISUAL UNIFICADO: Título + Descrição
-        // (SEM emojis no texto - o toast já tem ícone próprio)
+        // SISTEMA DE FEEDBACK PADRONIZADO (Imagem 9)
         // ========================================
 
         // CENÁRIO 1: ERROS ENCONTRADOS
         if (erros.length > 0) {
-          // Título: Curto e direto com contagem correta
+          // Parsear cada erro para o formato estruturado do FeedbackCard
+          const errorsStructured: FeedbackError[] = erros.slice(0, 5).map((erro) => {
+            const parsed = parseImportError(erro);
+            if (parsed) return parsed;
+
+            // Fallback para erros não parseáveis
+            const lineMatch = erro.match(/Linha (\d+):/);
+            return {
+              location: lineMatch ? `Linha ${lineMatch[1]}` : 'Erro',
+              field: 'Desconhecido',
+              issue: erro,
+              instruction: 'Verifique os dados e tente novamente.',
+            };
+          });
+
+          // Título: Contagem correta (singular/plural)
           const termoErro = erros.length === 1 ? 'erro encontrado' : 'erros encontrados';
           const tituloErro = `${erros.length} ${termoErro}`;
 
-          // Descrição: Lista limpa de erros (até 5)
-          const listaErros = erros.slice(0, 5).join('\n');
-          const errosOmitidos = erros.length > 5
-            ? `\n... e mais ${erros.length - 5} ${erros.length - 5 === 1 ? 'erro' : 'erros'}.`
-            : '';
-
-          // Estrutura Final: Título + quebra + Descrição
-          const mensagemErro = `${tituloErro}\n\n${listaErros}${errosOmitidos}`;
-
-          toast.error(mensagemErro, {
-            duration: 8000,
-            style: {
-              maxWidth: '600px',
-              whiteSpace: 'pre-line'
-            }
+          // Exibir usando o FeedbackCard
+          showFeedbackCard({
+            type: 'error',
+            title: tituloErro,
+            errors: errorsStructured,
+          }, {
+            duration: 10000,
           });
+
           console.error('❌ Erros encontrados:', erros);
           return;
         }
 
         // CENÁRIO 2: ARQUIVO VAZIO (Edge Case)
         if (processedLines.length === 0) {
-          // Título + Descrição orientativa
-          const mensagemVazio = `Nenhum dado válido encontrado\n\nVerifique se o arquivo contém linhas preenchidas após o cabeçalho.`;
-
-          toast.error(mensagemVazio, {
-            duration: 4000,
-            style: {
-              whiteSpace: 'pre-line'
-            }
+          showFeedbackCard({
+            type: 'error',
+            title: 'Nenhum dado válido encontrado',
+            description: 'Verifique se o arquivo contém linhas preenchidas após o cabeçalho.',
+          }, {
+            duration: 6000,
           });
           return;
         }
@@ -329,35 +351,33 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         // Título: Contagem correta (singular/plural)
         const qtd = processedLines.length;
         const termoSucesso = qtd === 1 ? 'linha importada' : 'linhas importadas';
-        const tituloSucesso = `${qtd} ${termoSucesso}`;
+        const tituloSucesso = `${qtd} ${termoSucesso} com sucesso`;
 
         // Descrição: Próximo passo claro
-        const descricaoSucesso = 'Revise os dados e clique em "Adicionar ao Plano".';
-
-        // Estrutura Final: Título + quebra + Descrição
-        const mensagemSucesso = `${tituloSucesso}\n${descricaoSucesso}`;
+        const descricaoSucesso = 'Revise os dados abaixo e clique em "Adicionar ao Plano".';
 
         // Inserir texto processado na textarea
         const finalText = processedLines.join('\n');
         console.log('✅ Texto final para textarea:', finalText);
         setInput(finalText);
 
-        toast.success(mensagemSucesso, {
-          duration: 4000,
-          style: {
-            whiteSpace: 'pre-line'
-          }
+        // Exibir usando o FeedbackCard
+        showFeedbackCard({
+          type: 'success',
+          title: tituloSucesso,
+          description: descricaoSucesso,
+        }, {
+          duration: 5000,
         });
 
       } catch (error: any) {
         // Erro crítico de processamento
-        const mensagemCritica = `Falha ao processar arquivo\n\nVerifique se o formato está correto (.xlsx).`;
-
-        toast.error(mensagemCritica, {
-          duration: 4000,
-          style: {
-            whiteSpace: 'pre-line'
-          }
+        showFeedbackCard({
+          type: 'error',
+          title: 'Falha ao processar arquivo',
+          description: 'Verifique se o formato está correto (.xlsx).',
+        }, {
+          duration: 6000,
         });
         console.error('Erro ao processar Excel:', error);
       }
@@ -452,29 +472,43 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         if (authError) {
           // Se for erro de "senha igual", avisa mas NÃO cancela a atualização do perfil
           if (authError.message.includes('different')) {
-            toast.success('Perfil atualizado! A senha foi mantida (pois era igual à anterior).', {
-              duration: 4000,
+            showFeedbackCard({
+              type: 'success',
+              title: 'Perfil atualizado',
+              description: 'A senha foi mantida pois era igual à anterior.'
+            }, {
+              duration: 4000
             });
           } else {
             throw authError; // Outros erros de senha param o processo
           }
         } else {
-          toast.success('Perfil e senha atualizados com sucesso!', {
-            duration: 3000,
-            icon: '✅',
+          showFeedbackCard({
+            type: 'success',
+            title: 'Perfil e senha atualizados',
+            description: 'Seus dados foram salvos com sucesso.'
+          }, {
+            duration: 4000
           });
         }
       } else {
-        toast.success('Perfil atualizado com sucesso!', {
-          duration: 3000,
-          icon: '✅',
+        showFeedbackCard({
+          type: 'success',
+          title: 'Perfil atualizado',
+          description: 'Suas informações foram salvas com sucesso.'
+        }, {
+          duration: 4000
         });
       }
 
       setNewPassword('');
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao atualizar dados.', {
-        duration: 4000,
+      showFeedbackCard({
+        type: 'error',
+        title: 'Erro ao atualizar',
+        description: err.message || 'Não foi possível salvar os dados. Tente novamente.'
+      }, {
+        duration: 5000
       });
     } finally {
       setLoading(false);
