@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { X, Calendar, CheckCircle, FileText } from 'lucide-react';
+import { X, Calendar, CheckCircle, FileText, Clock } from 'lucide-react';
 import { Lesson, StudyLog } from '../types';
-import { getTodayDateString } from '../utils';
+import { getTodayDateString, formatSecondsToHHMMSS } from '../utils';
 
 interface RegisterModalProps {
   lesson: Lesson;
@@ -34,10 +34,19 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ lesson, onClose, onSave }
           <button onClick={onClose} className="absolute right-6 top-6 p-2 hover:bg-white/20 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
+          {/* Matéria (linha superior limpa) */}
           <div className="mb-1">
             <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{lesson.materia}</span>
           </div>
-          <h3 className="text-xl font-black tracking-tight leading-tight">{lesson.title}</h3>
+
+          {/* Título + Duração (alinhados na base) */}
+          <div className="flex justify-between items-end gap-4">
+            <h3 className="text-xl font-black tracking-tight leading-tight flex-1">{lesson.title}</h3>
+            <div className="flex items-center gap-1.5 text-white/80 flex-shrink-0">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-bold">{formatSecondsToHHMMSS(lesson.durationSec)}</span>
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
