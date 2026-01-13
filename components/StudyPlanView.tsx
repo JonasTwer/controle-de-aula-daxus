@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { PlayCircle, CheckCircle, Search, BookOpen } from 'lucide-react';
+import { PlayCircle, CheckCircle, Search, BookOpen, Eraser } from 'lucide-react';
 import { MetaGroup, Lesson } from '../types';
 import { formatSecondsToHHMMSS } from '../utils';
 
@@ -22,6 +22,16 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedMeta, setSelectedMeta] = useState<string>('all');
   const [selectedMateria, setSelectedMateria] = useState<string>('all');
+
+  // Verify active filters for the Clear Filters button
+  const hasActiveFilters = filter !== 'all' || selectedMeta !== 'all' || selectedMateria !== 'all';
+
+  const handleClearFilters = () => {
+    setFilter('all');
+    setSelectedMeta('all');
+    setSelectedMateria('all');
+    setSearchTerm('');
+  };
 
   // 1. Dados Base achatados (Flattened)
   const flattenedData = useMemo(() => {
@@ -195,10 +205,10 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             ))}
           </div>
 
-          {/* Direita: Refinement Dropdowns (Selects) */}
-          <div className="flex flex-col sm:flex-row gap-3 min-w-[300px]">
+          {/* Direita: Refinement Dropdowns (Selects) + Clear Button */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             {/* Meta Filter */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-[140px]">
               <select
                 value={selectedMeta}
                 onChange={(e) => setSelectedMeta(e.target.value)}
@@ -215,7 +225,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             </div>
 
             {/* Materia Filter */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-[140px]">
               <select
                 value={selectedMateria}
                 onChange={(e) => setSelectedMateria(e.target.value)}
@@ -230,6 +240,19 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                 <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
+
+            {/* Clear Filters Button (Conditional) */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all whitespace-nowrap animate-in fade-in slide-in-from-right-4"
+                title="Limpar todos os filtros"
+              >
+                <Eraser className="w-4 h-4" />
+                <span className="hidden sm:inline">Limpar</span>
+                <span className="sm:hidden">Limpar Filtros</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
