@@ -140,7 +140,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Dias Seguidos</span>
             <div className="flex items-center gap-2">
               <Zap className={`w-5 h-5 ${stats.streak > 0 ? 'text-orange-500 fill-orange-500' : 'text-slate-300'}`} />
-              <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.streak}</span>
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white whitespace-nowrap">{stats.streak}</span>
             </div>
           </div>
 
@@ -148,15 +148,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Progresso Geral</span>
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-indigo-500" />
-              <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.percentage}%</span>
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white whitespace-nowrap">{stats.percentage}%</span>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Tempo Restante</span>
-            <div className="flex items-center gap-2 overflow-hidden">
+            <div className="flex items-center gap-2">
               <Hourglass className="w-5 h-5 text-amber-500 flex-shrink-0" />
-              <span className="text-2xl font-black text-slate-800 dark:text-white truncate">{stats.remainingFormatted}</span>
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white whitespace-nowrap">{stats.remainingFormatted}</span>
             </div>
           </div>
 
@@ -165,7 +165,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Previsão de Fim</span>
             <div className="flex items-center gap-2">
               <Flag className="w-5 h-5 text-emerald-500" />
-              <span className="text-2xl font-black text-slate-800 dark:text-white">{getCompletionForecast()}</span>
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white whitespace-nowrap">{getCompletionForecast()}</span>
             </div>
           </div>
         </div>
