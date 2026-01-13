@@ -140,41 +140,39 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                     key={lesson.id}
                     className="group flex items-center justify-between p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                   >
-                    <div className="flex-1 min-w-0 mr-4">
-                      <div className="flex items-center gap-3">
-                        {/* Lesson Number/Index */}
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                          }`}>
-                          {index + 1}
-                        </div>
+                    <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+                      {/* Lesson Number/Index - Centralized */}
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
+                          ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        }`}>
+                        {index + 1}
+                      </div>
 
-                        <div className="flex-1 min-w-0">
-                          {/* Lesson Title */}
+                      <div className="flex-1 min-w-0">
+                        {/* Materia (Superior - Hierarquia Invertida) */}
+                        <p className={`text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 ${lesson.isCompleted
+                            ? 'text-slate-300 dark:text-slate-600 line-through opacity-60'
+                            : 'text-indigo-500 dark:text-indigo-400'
+                          }`}>
+                          {lesson.materia}
+                        </p>
+
+                        {/* Lesson Title (Inferior - Texto Secundário) */}
+                        <div className="flex items-center gap-2 mt-0.5">
                           <p className={`text-sm font-medium truncate transition-all duration-300 ${lesson.isCompleted
                               ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
                               : 'text-slate-700 dark:text-slate-200'
                             }`}>
                             {lesson.title}
                           </p>
-
-                          {/* Lesson Metadata */}
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${lesson.isCompleted
-                                ? 'text-slate-300 dark:text-slate-600'
-                                : 'text-indigo-500 dark:text-indigo-400'
-                              }`}>
-                              {lesson.materia}
-                            </span>
-                            <span className="text-slate-300 dark:text-slate-700">•</span>
-                            <p className={`text-[10px] font-mono ${lesson.isCompleted
-                                ? 'text-slate-300 dark:text-slate-600'
-                                : 'text-slate-400'
-                              }`}>
-                              {formatSecondsToHHMMSS(lesson.durationSec)}
-                            </p>
-                          </div>
+                          <span className="text-slate-300 dark:text-slate-700 flex-shrink-0">•</span>
+                          <p className={`text-[10px] font-mono flex-shrink-0 ${lesson.isCompleted
+                              ? 'text-slate-300 dark:text-slate-600'
+                              : 'text-slate-400'
+                            }`}>
+                            {formatSecondsToHHMMSS(lesson.durationSec)}
+                          </p>
                         </div>
                       </div>
                     </div>

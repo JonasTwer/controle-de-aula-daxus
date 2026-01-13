@@ -297,7 +297,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
                   {previewUrl ? (
                     <img src={previewUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 shadow-sm" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-[10px] font-bold border border-dashed border-slate-300 dark:border-slate-600">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-[10px] font-bold border border-dashed border-slate-300 dark:border-slate-600 text-center">
                       SEM FOTO
                     </div>
                   )}
