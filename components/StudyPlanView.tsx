@@ -23,17 +23,15 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   const [selectedMeta, setSelectedMeta] = useState<string>('all');
   const [selectedMateria, setSelectedMateria] = useState<string>('all');
 
-  // Flatten lessons from groupedCourses, preserving insertion order
+  // 1. Dados Base achatados (Flattened)
   const flattenedData = useMemo(() => {
     return groupedCourses.map(meta => {
-      // Collect all lessons from all modules under this meta
       const allLessons: Lesson[] = [];
       meta.modules.forEach(mod => {
         allLessons.push(...mod.lessons);
       });
 
-      // Sort by createdAt to maintain insertion order
-      // If createdAt is not available, maintain the current order
+      // Ordenação: Criação (se disponível) ou Ordem original
       allLessons.sort((a, b) => {
         if (a.createdAt && b.createdAt) {
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -53,57 +51,94 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
     });
   }, [groupedCourses]);
 
-  // Extract unique Metas and Materias for filter dropdowns
-  const { uniqueMetas, uniqueMaterias } = useMemo(() => {
+  // 2. Passo A (Base): Filtrar por Status PRIMEIRO
+  // Isso gera o universo de dados válido para o status selecionado
+  const statusFilteredData = useMemo(() => {
+    return flattenedData.map(meta => ({
+      ...meta,
+      lessons: meta.lessons.filter(l => {
+        if (filter === 'all') return true;
+        return filter === 'completed' ? l.isCompleted : !l.isCompleted;
+      })
+    })).filter(meta => meta.lessons.length > 0); // Remove Metas que ficaram vazias
+  }, [flattenedData, filter]);
+
+  // 3. Lógica de Filtragem Bidirecional (Cross-Filtering)
+  // Calcula opções disponíveis para os Dropdowns baseado no Status + O Outro Filtro
+  const { availableMetas, availableMaterias } = useMemo(() => {
     const metas = new Set<string>();
     const materias = new Set<string>();
 
-    flattenedData.forEach(meta => {
-      metas.add(meta.name);
-      meta.lessons.forEach(lesson => {
-        materias.add(lesson.materia);
-      });
+    // A. Opções de META disponíveis
+    // Devem considerar: Dados do Status Atual + Matéria Selecionada (se houver)
+    statusFilteredData.forEach(meta => {
+      // Verifica se esta meta tem aulas compatíveis com a matéria selecionada
+      const hasMatchingLessons = selectedMateria === 'all' || meta.lessons.some(l => l.materia === selectedMateria);
+
+      if (hasMatchingLessons) {
+        metas.add(meta.name);
+      }
+    });
+
+    // B. Opções de MATÉRIA disponíveis
+    // Devem considerar: Dados do Status Atual + Meta Selecionada (se houver)
+    statusFilteredData.forEach(meta => {
+      // Se uma meta específica está selecionada, ignorar as outras
+      if (selectedMeta === 'all' || meta.name === selectedMeta) {
+        meta.lessons.forEach(l => {
+          // Aqui não precisamos filtrar por matéria, pois queremos saber todas as matérias disponíveis DENTRO desta meta/status
+          materias.add(l.materia);
+        });
+      }
     });
 
     return {
-      uniqueMetas: Array.from(metas).sort((a, b) =>
+      availableMetas: Array.from(metas).sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
       ),
-      uniqueMaterias: Array.from(materias).sort()
+      availableMaterias: Array.from(materias).sort()
     };
-  }, [flattenedData]);
+  }, [statusFilteredData, selectedMeta, selectedMateria]);
 
-  // Apply combined filters (Status AND Meta AND Materia AND Search)
+  // 4. Reset de Segurança
+  // Se a opção selecionada não for mais válida (ex: mudou status e a matéria sumiu), resetar
+  // Usamos useMemo para detectar a mudança, mas o set deve ser em efeito ou render direto.
+  // Evitando loop: só reseta se o valor atual não for 'all' e não estiver na lista
+  if (selectedMeta !== 'all' && !availableMetas.includes(selectedMeta)) {
+    setSelectedMeta('all');
+  }
+  if (selectedMateria !== 'all' && !availableMaterias.includes(selectedMateria)) {
+    setSelectedMateria('all');
+  }
+
+  // 5. Filtragem Final para Exibição
+  // Aplica TODOS os filtros combinados (Status + Meta + Matéria + Busca)
   const filteredData = useMemo(() => {
     const searchNormalized = normalizeText(searchTerm);
 
-    return flattenedData
+    return statusFilteredData
       .filter(meta => selectedMeta === 'all' || meta.name === selectedMeta)
       .map(meta => {
+        const filteredLessons = meta.lessons.filter(l => {
+          // Filtro de Matéria
+          const matchMateria = selectedMateria === 'all' || l.materia === selectedMateria;
+
+          // Busca Inteligente
+          const matchSearch = searchNormalized === '' ||
+            normalizeText(l.title).includes(searchNormalized) ||
+            normalizeText(l.materia).includes(searchNormalized) ||
+            normalizeText(meta.name).includes(searchNormalized);
+
+          return matchMateria && matchSearch;
+        });
+
         return {
           ...meta,
-          lessons: meta.lessons.filter(l => {
-            // Filter 1: Status (all/pending/completed)
-            const matchStatus = filter === 'all'
-              ? true
-              : filter === 'completed' ? l.isCompleted : !l.isCompleted;
-
-            // Filter 2: Materia
-            const matchMateria = selectedMateria === 'all' || l.materia === selectedMateria;
-
-            // Filter 3: Smart search (accent-insensitive, case-insensitive)
-            const matchSearch = searchNormalized === '' ||
-              normalizeText(l.title).includes(searchNormalized) ||
-              normalizeText(l.materia).includes(searchNormalized) ||
-              normalizeText(meta.name).includes(searchNormalized);
-
-            // Combined (AND logic)
-            return matchStatus && matchMateria && matchSearch;
-          })
+          lessons: filteredLessons
         };
       })
-      .filter(m => m.lessons.length > 0);
-  }, [flattenedData, searchTerm, filter, selectedMeta, selectedMateria]);
+      .filter(meta => meta.lessons.length > 0);
+  }, [statusFilteredData, searchTerm, selectedMeta, selectedMateria]);
 
   if (groupedCourses.length === 0) {
     return (
@@ -122,23 +157,26 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-4">
       {/* Modern Toolbar with Hybrid Layout */}
-      <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-3 z-10 space-y-3">
-        {/* Smart Search Bar */}
-        <div className="relative flex items-center">
-          <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+      <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-4 z-10 space-y-4">
+        {/* 1. Smart Search Bar (Largura Total) */}
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+          </div>
           <input
             type="text"
             placeholder="Buscar meta, matéria ou aula..."
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+            className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all dark:text-white text-sm font-medium placeholder:text-slate-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Hybrid Filter Layout: Status Pills (Left) + Dropdown Filters (Right) */}
-        <div className="flex items-center justify-between gap-3">
-          {/* Left: Quick Access Status Pills */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        {/* 2. Hybrid Control Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+          {/* Esquerda: Status Pills */}
+          <div className="flex p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm w-fit">
             {[
               { id: 'all', label: 'Todos' },
               { id: 'pending', label: 'Pendentes' },
@@ -147,9 +185,9 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id as any)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filter === f.id
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
-                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filter === f.id
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
               >
                 {f.label}
@@ -157,31 +195,41 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             ))}
           </div>
 
-          {/* Right: Refinement Dropdowns */}
-          <div className="flex gap-2 flex-shrink-0">
+          {/* Direita: Refinement Dropdowns (Selects) */}
+          <div className="flex flex-col sm:flex-row gap-3 min-w-[300px]">
             {/* Meta Filter */}
-            <select
-              value={selectedMeta}
-              onChange={(e) => setSelectedMeta(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:border-indigo-300"
-            >
-              <option value="all">Todas as Metas</option>
-              {uniqueMetas.map(meta => (
-                <option key={meta} value={meta}>{meta}</option>
-              ))}
-            </select>
+            <div className="relative flex-1">
+              <select
+                value={selectedMeta}
+                onChange={(e) => setSelectedMeta(e.target.value)}
+                className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:border-indigo-300 transition-all truncate"
+              >
+                <option value="all">Todas as Metas</option>
+                {availableMetas.map(meta => (
+                  <option key={meta} value={meta}>{meta}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
 
             {/* Materia Filter */}
-            <select
-              value={selectedMateria}
-              onChange={(e) => setSelectedMateria(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:border-indigo-300"
-            >
-              <option value="all">Todas as Matérias</option>
-              {uniqueMaterias.map(materia => (
-                <option key={materia} value={materia}>{materia}</option>
-              ))}
-            </select>
+            <div className="relative flex-1">
+              <select
+                value={selectedMateria}
+                onChange={(e) => setSelectedMateria(e.target.value)}
+                className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:border-indigo-300 transition-all truncate"
+              >
+                <option value="all">Todas as Matérias</option>
+                {availableMaterias.map(materia => (
+                  <option key={materia} value={materia}>{materia}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
