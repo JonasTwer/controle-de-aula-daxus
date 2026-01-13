@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { Upload, Trash2, Database, AlertCircle, CheckCircle2, FileText, AlertTriangle, LogOut, Key, Loader2, BookOpen, X } from 'lucide-react';
+import { Upload, Trash2, Database, AlertCircle, CheckCircle2, FileText, AlertTriangle, LogOut, Key, Loader2, BookOpen, X, Download, FileUp } from 'lucide-react';
 import { Lesson, StudyLog } from '../types';
 import { parseDurationToSeconds, formatDateLocal } from '../utils';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../imageUtils';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface ConfigViewProps {
   onSaveData: (lessons: Lesson[]) => Promise<void>;
@@ -27,6 +28,7 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   // Profile & Password state
   const [displayName, setDisplayName] = useState(userMetadata?.full_name || '');
@@ -160,6 +162,99 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    const a = document.createElement('a');
+    a.href = '/template_plano.xlsx';
+    a.download = 'template_plano.xlsx';
+    a.click();
+    toast.success('Template baixado com sucesso!', { duration: 2000 });
+  };
+
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+        // Processar dados com regras de validação
+        const processedLines: string[] = [];
+
+        // Pular primeira linha (cabeçalho) e processar o resto
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i];
+
+          // Ignorar linhas vazias
+          if (!row || row.length === 0 || !row[0]) continue;
+
+          const meta = String(row[0] || '').trim();
+          const materia = String(row[1] || '').trim();
+          const assunto = String(row[2] || '').trim();
+          let tempo = String(row[3] || '').trim();
+
+          // Filtrar linha de exemplo (ignorar se contém exatamente o exemplo do template)
+          if (meta === 'Meta 1' && materia === 'Direito Constitucional') {
+            continue; // Pular linha de exemplo
+          }
+
+          // Validar se tem dados mínimos
+          if (!meta || !materia || !assunto) continue;
+
+          // Tratamento crítico de tempo
+          if (!tempo || tempo === '') {
+            tempo = '00:30:00'; // Padrão
+          } else if (/^\d+$/.test(tempo)) {
+            // Se for apenas números (ex: "30"), converter para HH:MM:SS
+            const minutes = parseInt(tempo, 10);
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            tempo = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+          } else if (/^\d{1,2}:\d{2}$/.test(tempo)) {
+            // Se for MM:SS, adicionar hora
+            tempo = `00:${tempo}:00`;
+          } else if (!/^\d{1,2}:\d{2}:\d{2}$/.test(tempo)) {
+            // Se não estiver no formato correto, usar padrão
+            tempo = '00:30:00';
+          }
+
+          // Converter para o formato de string usado no app
+          const line = `${meta} | ${materia} | ${assunto} | ${tempo}`;
+          processedLines.push(line);
+        }
+
+        if (processedLines.length === 0) {
+          toast.error('Nenhum dado válido encontrado no Excel. Certifique-se de preencher as linhas após o cabeçalho.', {
+            duration: 4000
+          });
+          return;
+        }
+
+        // Inserir texto processado na textarea
+        setInput(processedLines.join('\n'));
+        toast.success(`${processedLines.length} linha(s) carregada(s) do Excel. Revise e clique em "Adicionar ao Plano".`, {
+          duration: 4000,
+          icon: '📊'
+        });
+
+      } catch (error: any) {
+        toast.error('Erro ao processar arquivo Excel. Verifique se o formato está correto.', {
+          duration: 4000
+        });
+        console.error('Erro ao processar Excel:', error);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+
+    // Limpar o input para permitir reenvio do mesmo arquivo
+    e.target.value = '';
   };
 
   const handleImport = async () => {
@@ -351,7 +446,41 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Formato Esperado</p>
           <p className="text-xs text-indigo-800 dark:text-indigo-300 font-mono">Meta | Matéria | Título da Aula | 00:15:00</p>
         </div>
-        <textarea className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300" placeholder="Meta 1 | Direito Constitucional | Direitos Fundamentais - Art. 5º da Constituição Federal | 00:45:00" value={input} onChange={(e) => setInput(e.target.value)} />
+        <textarea
+          className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-300"
+          placeholder="Meta 1 | Direito Constitucional | Direitos Fundamentais - Art. 5º da Constituição Federal | 00:45:00"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+
+        {/* Opção de Excel - Logo abaixo da textarea */}
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-slate-400 dark:text-slate-500">Ou preencha automaticamente via planilha:</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              Baixar Modelo
+            </button>
+            <button
+              onClick={() => excelInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all"
+            >
+              <FileUp className="w-4 h-4" />
+              Carregar Excel
+            </button>
+            <input
+              ref={excelInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleExcelUpload}
+              className="hidden"
+            />
+          </div>
+        </div>
+
         <div className="mt-4 space-y-3">
           {error && <div className="flex items-center gap-2 text-red-500 text-xs font-medium"><AlertCircle className="w-4 h-4" /> {error}</div>}
           {success && <div className="flex items-center gap-2 text-emerald-500 text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Importado com sucesso!</div>}
