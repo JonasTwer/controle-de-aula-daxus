@@ -4,8 +4,8 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip
 } from 'recharts';
 import {
-  TrendingUp, Clock, Zap, Calendar, Target, GraduationCap,
-  History, CheckCircle2, Circle, CalendarCheck
+  TrendingUp, Clock, Zap, Hourglass, Target, GraduationCap,
+  History, CheckCircle2, Circle, Flag
 } from 'lucide-react';
 import { AppStats, StudyLog } from '../types';
 import { formatDateLocal } from '../utils';
@@ -95,7 +95,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     const forecast = new Date();
     forecast.setDate(forecast.getDate() + daysNeeded);
 
-    return forecast.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return forecast.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
   return (
@@ -155,7 +155,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Tempo Restante</span>
             <div className="flex items-center gap-2 overflow-hidden">
-              <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              <Hourglass className="w-5 h-5 text-amber-500 flex-shrink-0" />
               <span className="text-2xl font-black text-slate-800 dark:text-white truncate">{stats.remainingFormatted}</span>
             </div>
           </div>
@@ -164,7 +164,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Previsão de Fim</span>
             <div className="flex items-center gap-2">
-              <CalendarCheck className="w-5 h-5 text-emerald-500" />
+              <Flag className="w-5 h-5 text-emerald-500" />
               <span className="text-2xl font-black text-slate-800 dark:text-white">{getCompletionForecast()}</span>
             </div>
           </div>
