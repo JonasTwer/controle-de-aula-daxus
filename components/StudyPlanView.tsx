@@ -140,8 +140,9 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                     key={lesson.id}
                     className="group flex items-center justify-between p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                   >
+                    {/* Container principal com items-center para centralização vertical */}
                     <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
-                      {/* Lesson Number/Index - Centralized */}
+                      {/* Lesson Number/Index - Vertically Centered */}
                       <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
                           ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
@@ -149,27 +150,31 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                         {index + 1}
                       </div>
 
-                      <div className="flex-1 min-w-0">
+                      {/* Container de texto com gap para espaçamento entre linhas */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
                         {/* Materia (Superior - Hierarquia Invertida) */}
-                        <p className={`text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 ${lesson.isCompleted
+                        <p className={`text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 leading-tight ${lesson.isCompleted
                             ? 'text-slate-300 dark:text-slate-600 line-through opacity-60'
                             : 'text-indigo-500 dark:text-indigo-400'
                           }`}>
                           {lesson.materia}
                         </p>
 
-                        {/* Lesson Title (Inferior - Texto Secundário) */}
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className={`text-sm font-medium truncate transition-all duration-300 ${lesson.isCompleted
-                              ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
-                              : 'text-slate-700 dark:text-slate-200'
-                            }`}>
+                        {/* Lesson Title (Inferior - Texto Secundário com fonte Inter Regular) */}
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={`text-sm font-normal truncate transition-all duration-300 leading-snug ${lesson.isCompleted
+                                ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
+                                : 'text-slate-600 dark:text-slate-400'
+                              }`}
+                            style={{ fontFamily: "'Inter', sans-serif" }}
+                          >
                             {lesson.title}
                           </p>
-                          <span className="text-slate-300 dark:text-slate-700 flex-shrink-0">•</span>
+                          <span className="text-slate-300 dark:text-slate-700 flex-shrink-0 text-xs">•</span>
                           <p className={`text-[10px] font-mono flex-shrink-0 ${lesson.isCompleted
                               ? 'text-slate-300 dark:text-slate-600'
-                              : 'text-slate-400'
+                              : 'text-slate-400 dark:text-slate-500'
                             }`}>
                             {formatSecondsToHHMMSS(lesson.durationSec)}
                           </p>
