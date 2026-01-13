@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, Clock, Zap, Calendar, Target, GraduationCap,
-  History, CheckCircle2, Circle
+  History, CheckCircle2, Circle, CalendarCheck
 } from 'lucide-react';
 import { AppStats, StudyLog } from '../types';
 import { formatDateLocal } from '../utils';
@@ -75,6 +75,29 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     };
   });
 
+  // Calcular previsão de conclusão
+  const getCompletionForecast = (): string => {
+    // Calcula velocidade média (últimos 7 dias)
+    const last7DaysTotal = last7Days.reduce((acc, day) => acc + day.minutes, 0);
+    const averagePerDay = last7DaysTotal / 7; // minutos por dia
+
+    if (averagePerDay === 0 || stats.remainingCount === 0) {
+      return '---';
+    }
+
+    // Converte tempo restante para minutos
+    const remainingMinutes = (stats.totalDuration - stats.totalStudied) / 60; // stats em segundos
+
+    // Calcula dias necessários
+    const daysNeeded = Math.ceil(remainingMinutes / averagePerDay);
+
+    // Data estimada
+    const forecast = new Date();
+    forecast.setDate(forecast.getDate() + daysNeeded);
+
+    return forecast.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
@@ -83,32 +106,36 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
         {/* LINHA SUPERIOR */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* TOTAL ESTUDADO */}
-          <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-[32px] text-white shadow-xl shadow-indigo-100 dark:shadow-none transition-all hover:scale-[1.01]">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Total Estudado</span>
-              <div className="p-2 bg-white/10 rounded-xl">
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-6 py-4 rounded-[32px] text-white shadow-xl shadow-indigo-100 dark:shadow-none transition-all hover:scale-[1.01]">
+            <div className="flex justify-between items-center">
+              <div className="flex-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 block mb-2">Total Estudado</span>
+                <h3 className="text-3xl font-black tracking-tight">{stats.totalStudiedFormatted}</h3>
+                <p className="text-indigo-200/80 text-[10px] font-bold uppercase mt-1">de {stats.totalDurationFormatted} totais</p>
+              </div>
+              <div className="p-2 bg-white/10 rounded-xl flex-shrink-0">
                 <GraduationCap className="w-5 h-5 text-indigo-100" />
               </div>
             </div>
-            <h3 className="text-4xl font-black tracking-tight">{stats.totalStudiedFormatted}</h3>
-            <p className="text-indigo-200/80 text-[10px] font-bold uppercase mt-2">de {stats.totalDurationFormatted} totais</p>
           </div>
 
           {/* TEMPO DO DIA */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-6 rounded-[32px] shadow-sm transition-all hover:scale-[1.01]">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300">Tempo do Dia</span>
-              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 px-6 py-4 rounded-[32px] shadow-sm transition-all hover:scale-[1.01]">
+            <div className="flex justify-between items-center">
+              <div className="flex-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-2">Tempo do Dia</span>
+                <h3 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">{stats.todayFormatted}</h3>
+                <p className="text-slate-400 dark:text-slate-300 text-[10px] font-bold uppercase mt-1">Dedicados hoje</p>
+              </div>
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex-shrink-0">
                 <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
             </div>
-            <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{stats.todayFormatted}</h3>
-            <p className="text-slate-400 dark:text-slate-300 text-[10px] font-bold uppercase mt-2">Dedicados hoje</p>
           </div>
         </div>
 
-        {/* LINHA INFERIOR */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* LINHA INFERIOR - 4 COLUNAS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Dias Seguidos</span>
             <div className="flex items-center gap-2">
@@ -130,6 +157,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
             <div className="flex items-center gap-2 overflow-hidden">
               <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
               <span className="text-2xl font-black text-slate-800 dark:text-white truncate">{stats.remainingFormatted}</span>
+            </div>
+          </div>
+
+          {/* NOVO CARD: PREVISÃO DE FIM */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Previsão de Fim</span>
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="w-5 h-5 text-emerald-500" />
+              <span className="text-2xl font-black text-slate-800 dark:text-white">{getCompletionForecast()}</span>
             </div>
           </div>
         </div>
