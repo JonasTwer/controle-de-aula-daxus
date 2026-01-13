@@ -9,9 +9,19 @@ interface StudyPlanViewProps {
   onRegisterStudy: (lesson: Lesson) => void;
 }
 
+// Função auxiliar para normalizar texto (remover acentos e tornar lowercase)
+const normalizeText = (text: string): string => {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+};
+
 const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegisterStudy }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [selectedMeta, setSelectedMeta] = useState<string>('all');
+  const [selectedMateria, setSelectedMateria] = useState<string>('all');
 
   // Flatten lessons from groupedCourses, preserving insertion order
   const flattenedData = useMemo(() => {
@@ -43,24 +53,57 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
     });
   }, [groupedCourses]);
 
-  // Apply search and filter
+  // Extract unique Metas and Materias for filter dropdowns
+  const { uniqueMetas, uniqueMaterias } = useMemo(() => {
+    const metas = new Set<string>();
+    const materias = new Set<string>();
+
+    flattenedData.forEach(meta => {
+      metas.add(meta.name);
+      meta.lessons.forEach(lesson => {
+        materias.add(lesson.materia);
+      });
+    });
+
+    return {
+      uniqueMetas: Array.from(metas).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      ),
+      uniqueMaterias: Array.from(materias).sort()
+    };
+  }, [flattenedData]);
+
+  // Apply combined filters (Status AND Meta AND Materia AND Search)
   const filteredData = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchNormalized = normalizeText(searchTerm);
 
-    return flattenedData.map(meta => {
-      const matchMeta = meta.name.toLowerCase().includes(searchLower);
+    return flattenedData
+      .filter(meta => selectedMeta === 'all' || meta.name === selectedMeta)
+      .map(meta => {
+        return {
+          ...meta,
+          lessons: meta.lessons.filter(l => {
+            // Filter 1: Status (all/pending/completed)
+            const matchStatus = filter === 'all'
+              ? true
+              : filter === 'completed' ? l.isCompleted : !l.isCompleted;
 
-      return {
-        ...meta,
-        lessons: meta.lessons.filter(l => {
-          const matchLesson = l.title.toLowerCase().includes(searchLower) ||
-            l.materia.toLowerCase().includes(searchLower);
-          const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
-          return (matchMeta || matchLesson) && matchFilter;
-        })
-      };
-    }).filter(m => m.lessons.length > 0);
-  }, [flattenedData, searchTerm, filter]);
+            // Filter 2: Materia
+            const matchMateria = selectedMateria === 'all' || l.materia === selectedMateria;
+
+            // Filter 3: Smart search (accent-insensitive, case-insensitive)
+            const matchSearch = searchNormalized === '' ||
+              normalizeText(l.title).includes(searchNormalized) ||
+              normalizeText(l.materia).includes(searchNormalized) ||
+              normalizeText(meta.name).includes(searchNormalized);
+
+            // Combined (AND logic)
+            return matchStatus && matchMateria && matchSearch;
+          })
+        };
+      })
+      .filter(m => m.lessons.length > 0);
+  }, [flattenedData, searchTerm, filter, selectedMeta, selectedMateria]);
 
   if (groupedCourses.length === 0) {
     return (
@@ -78,10 +121,11 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-4">
-      {/* Search and Filter Controls */}
-      <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-2 z-10 space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+      {/* Modern Toolbar with Hybrid Layout */}
+      <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-3 z-10 space-y-3">
+        {/* Smart Search Bar */}
+        <div className="relative flex items-center">
+          <Search className="absolute left-3 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Buscar meta, matéria ou aula..."
@@ -90,23 +134,55 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'pending', label: 'Pendentes' },
-            { id: 'completed', label: 'Concluídos' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as any)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${filter === f.id
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none'
-                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'
-                }`}
+
+        {/* Hybrid Filter Layout: Status Pills (Left) + Dropdown Filters (Right) */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Quick Access Status Pills */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'pending', label: 'Pendentes' },
+              { id: 'completed', label: 'Concluídos' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id as any)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filter === f.id
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
+                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Refinement Dropdowns */}
+          <div className="flex gap-2 flex-shrink-0">
+            {/* Meta Filter */}
+            <select
+              value={selectedMeta}
+              onChange={(e) => setSelectedMeta(e.target.value)}
+              className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:border-indigo-300"
             >
-              {f.label}
-            </button>
-          ))}
+              <option value="all">Todas as Metas</option>
+              {uniqueMetas.map(meta => (
+                <option key={meta} value={meta}>{meta}</option>
+              ))}
+            </select>
+
+            {/* Materia Filter */}
+            <select
+              value={selectedMateria}
+              onChange={(e) => setSelectedMateria(e.target.value)}
+              className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:border-indigo-300"
+            >
+              <option value="all">Todas as Matérias</option>
+              {uniqueMaterias.map(materia => (
+                <option key={materia} value={materia}>{materia}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
