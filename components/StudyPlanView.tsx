@@ -70,7 +70,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
         </div>
         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Nenhum plano importado</h3>
         <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs">
-          Vá até a aba "Config" para importar sua lista de aulas e começar seu rastreamento.
+          Vá até a aba "Config" para importar sua lista de aulas e começar seu planejamento.
         </p>
       </div>
     );
@@ -144,8 +144,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                     <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
                       {/* Lesson Number/Index - Vertically Centered */}
                       <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
-                          ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                         }`}>
                         {index + 1}
                       </div>
@@ -154,8 +154,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                       <div className="flex-1 min-w-0 flex flex-col gap-1">
                         {/* Materia (Superior - Hierarquia Invertida) */}
                         <p className={`text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 leading-tight ${lesson.isCompleted
-                            ? 'text-slate-300 dark:text-slate-600 line-through opacity-60'
-                            : 'text-indigo-500 dark:text-indigo-400'
+                          ? 'text-slate-300 dark:text-slate-600 line-through opacity-60'
+                          : 'text-indigo-500 dark:text-indigo-400'
                           }`}>
                           {lesson.materia}
                         </p>
@@ -164,8 +164,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                         <div className="flex items-center gap-2">
                           <p
                             className={`text-sm font-normal truncate transition-all duration-300 leading-snug ${lesson.isCompleted
-                                ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
-                                : 'text-slate-600 dark:text-slate-400'
+                              ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
+                              : 'text-slate-600 dark:text-slate-400'
                               }`}
                             style={{ fontFamily: "'Inter', sans-serif" }}
                           >
@@ -173,8 +173,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                           </p>
                           <span className="text-slate-300 dark:text-slate-700 flex-shrink-0 text-xs">•</span>
                           <p className={`text-[10px] font-mono flex-shrink-0 ${lesson.isCompleted
-                              ? 'text-slate-300 dark:text-slate-600'
-                              : 'text-slate-400 dark:text-slate-500'
+                            ? 'text-slate-300 dark:text-slate-600'
+                            : 'text-slate-400 dark:text-slate-500'
                             }`}>
                             {formatSecondsToHHMMSS(lesson.durationSec)}
                           </p>
