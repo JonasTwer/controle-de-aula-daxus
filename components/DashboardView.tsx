@@ -177,7 +177,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
                   data={pieData}
                   innerRadius={60}
                   outerRadius={80}
-                  paddingAngle={8}
+                  paddingAngle={0}
                   dataKey="value"
                   stroke="none"
                 >
