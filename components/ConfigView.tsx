@@ -184,6 +184,9 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[] = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
+        console.log('📊 Total de linhas no Excel:', jsonData.length);
+        console.log('📊 Dados brutos:', jsonData);
+
         // Processar dados com regras de validação
         const processedLines: string[] = [];
 
@@ -191,43 +194,55 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
 
+          console.log(`Linha ${i}:`, row);
+
           // Ignorar linhas vazias
-          if (!row || row.length === 0 || !row[0]) continue;
+          if (!row || row.length === 0 || !row[0]) {
+            console.log(`❌ Linha ${i} ignorada: vazia`);
+            continue;
+          }
 
           const meta = String(row[0] || '').trim();
           const materia = String(row[1] || '').trim();
           const assunto = String(row[2] || '').trim();
           let tempo = String(row[3] || '').trim();
 
+          console.log(`Linha ${i} - Meta: "${meta}", Matéria: "${materia}", Assunto: "${assunto}", Tempo: "${tempo}"`);
+
           // Filtrar linha de exemplo (ignorar se contém exatamente o exemplo do template)
           if (meta === 'Meta 1' && materia === 'Direito Constitucional') {
-            continue; // Pular linha de exemplo
+            console.log(`❌ Linha ${i} ignorada: linha de exemplo do template`);
+            continue;
           }
 
           // Validar se tem dados mínimos
-          if (!meta || !materia || !assunto) continue;
+          if (!meta || !materia || !assunto) {
+            console.log(`❌ Linha ${i} ignorada: dados incompletos`);
+            continue;
+          }
 
           // Tratamento crítico de tempo
           if (!tempo || tempo === '') {
-            tempo = '00:30:00'; // Padrão
+            tempo = '00:30:00';
           } else if (/^\d+$/.test(tempo)) {
-            // Se for apenas números (ex: "30"), converter para HH:MM:SS
             const minutes = parseInt(tempo, 10);
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;
             tempo = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
           } else if (/^\d{1,2}:\d{2}$/.test(tempo)) {
-            // Se for MM:SS, adicionar hora
             tempo = `00:${tempo}:00`;
           } else if (!/^\d{1,2}:\d{2}:\d{2}$/.test(tempo)) {
-            // Se não estiver no formato correto, usar padrão
             tempo = '00:30:00';
           }
 
           // Converter para o formato de string usado no app
           const line = `${meta} | ${materia} | ${assunto} | ${tempo}`;
           processedLines.push(line);
+          console.log(`✅ Linha ${i} processada:`, line);
         }
+
+        console.log('📊 Total de linhas processadas:', processedLines.length);
+        console.log('📊 Linhas finais:', processedLines);
 
         if (processedLines.length === 0) {
           toast.error('Nenhum dado válido encontrado no Excel. Certifique-se de preencher as linhas após o cabeçalho.', {
@@ -237,7 +252,10 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         }
 
         // Inserir texto processado na textarea
-        setInput(processedLines.join('\n'));
+        const finalText = processedLines.join('\n');
+        console.log('📊 Texto final para textarea:', finalText);
+        setInput(finalText);
+
         toast.success(`${processedLines.length} linha(s) carregada(s) do Excel. Revise e clique em "Adicionar ao Plano".`, {
           duration: 4000,
           icon: '📊'
@@ -459,14 +477,14 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleDownloadTemplate}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all"
             >
               <Download className="w-4 h-4" />
               Baixar Modelo
             </button>
             <button
               onClick={() => excelInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"
             >
               <FileUp className="w-4 h-4" />
               Carregar Excel
