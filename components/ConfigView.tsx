@@ -187,83 +187,127 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         console.log('📊 Total de linhas no Excel:', jsonData.length);
         console.log('📊 Dados brutos:', jsonData);
 
-        // Processar dados com regras de validação
+        // Lista de erros e dados válidos
+        const erros: string[] = [];
         const processedLines: string[] = [];
+        const temLetras = /[a-zA-Z]/; // Regex para proibir texto no tempo
 
-        // Pular primeira linha (cabeçalho) e processar o resto
+        // Processar linhas (pular APENAS o cabeçalho - linha 0)
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
+          const numeroLinha = i + 1; // Linha real no Excel (para mensagens)
 
-          console.log(`Linha ${i}:`, row);
+          console.log(`Processando linha ${numeroLinha}:`, row);
 
-          // Ignorar linhas vazias
-          if (!row || row.length === 0 || !row[0]) {
-            console.log(`❌ Linha ${i} ignorada: vazia`);
+          // Ignorar linhas completamente vazias
+          if (!row || row.length === 0 || (row.every((cell: any) => !cell))) {
+            console.log(`⚠️ Linha ${numeroLinha}: Vazia (ignorada)`);
             continue;
           }
 
           const meta = String(row[0] || '').trim();
           const materia = String(row[1] || '').trim();
           const assunto = String(row[2] || '').trim();
-          let tempo = String(row[3] || '').trim();
+          const tempoRaw = row[3]; // Não converter ainda para validar corretamente
 
-          console.log(`Linha ${i} - Meta: "${meta}", Matéria: "${materia}", Assunto: "${assunto}", Tempo: "${tempo}"`);
+          console.log(`Linha ${numeroLinha} - Meta: "${meta}", Matéria: "${materia}", Assunto: "${assunto}", Tempo: "${tempoRaw}"`);
 
-          // Filtrar APENAS a linha de exemplo EXATA do template (todos os 4 campos devem ser idênticos)
-          const isExactTemplateExample = (
-            meta === 'Meta 1' &&
-            materia === 'Direito Constitucional' &&
-            assunto === 'Direitos fundamentais - Art 5' &&
-            tempo === '00:30:00'
-          );
-
-          if (isExactTemplateExample) {
-            console.log(`❌ Linha ${i} ignorada: linha de exemplo EXATA do template`);
+          // 1. Validação de Campos Obrigatórios
+          if (!meta) {
+            erros.push(`Linha ${numeroLinha}: Campo 'Meta' está vazio.`);
+            console.log(`❌ Linha ${numeroLinha}: Meta vazia`);
+            continue;
+          }
+          if (!materia) {
+            erros.push(`Linha ${numeroLinha}: Campo 'Matéria' está vazio.`);
+            console.log(`❌ Linha ${numeroLinha}: Matéria vazia`);
+            continue;
+          }
+          if (!assunto) {
+            erros.push(`Linha ${numeroLinha}: Campo 'Assunto' está vazio.`);
+            console.log(`❌ Linha ${numeroLinha}: Assunto vazio`);
             continue;
           }
 
-          // Validar se tem dados mínimos
-          if (!meta || !materia || !assunto) {
-            console.log(`❌ Linha ${i} ignorada: dados incompletos`);
+          // 2. Validação Rigorosa de Tempo
+          if (!tempoRaw && tempoRaw !== 0) {
+            erros.push(`Linha ${numeroLinha}: Campo 'Tempo' está vazio.`);
+            console.log(`❌ Linha ${numeroLinha}: Tempo vazio`);
             continue;
           }
 
-          // Tratamento crítico de tempo
-          if (!tempo || tempo === '') {
-            tempo = '00:30:00';
-          } else if (/^\d+$/.test(tempo)) {
-            const minutes = parseInt(tempo, 10);
+          // Converte para string para validação
+          const tempoStr = String(tempoRaw).trim();
+
+          // Proibir letras no campo de tempo
+          if (temLetras.test(tempoStr)) {
+            erros.push(`Linha ${numeroLinha}: Campo 'Tempo' inválido ('${tempoStr}'). Use apenas números ou formato HH:MM:SS.`);
+            console.log(`❌ Linha ${numeroLinha}: Tempo contém letras`);
+            continue;
+          }
+
+          // Normalizar o tempo para HH:MM:SS
+          let tempoFinal: string;
+
+          if (/^\d+$/.test(tempoStr)) {
+            // Apenas números = minutos
+            const minutes = parseInt(tempoStr, 10);
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;
-            tempo = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-          } else if (/^\d{1,2}:\d{2}$/.test(tempo)) {
-            tempo = `00:${tempo}:00`;
-          } else if (!/^\d{1,2}:\d{2}:\d{2}$/.test(tempo)) {
-            tempo = '00:30:00';
+            tempoFinal = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+            console.log(`🔄 Linha ${numeroLinha}: Tempo convertido de ${tempoStr}min para ${tempoFinal}`);
+          } else if (/^\d{1,2}:\d{2}$/.test(tempoStr)) {
+            // Formato MM:SS
+            tempoFinal = `00:${tempoStr}:00`;
+            console.log(`🔄 Linha ${numeroLinha}: Tempo convertido de ${tempoStr} para ${tempoFinal}`);
+          } else if (/^\d{1,2}:\d{2}:\d{2}$/.test(tempoStr)) {
+            // Já está em HH:MM:SS
+            tempoFinal = tempoStr;
+          } else {
+            // Formato inválido
+            erros.push(`Linha ${numeroLinha}: Formato de tempo inválido ('${tempoStr}'). Use: minutos (30), MM:SS (45:00) ou HH:MM:SS (01:30:00).`);
+            console.log(`❌ Linha ${numeroLinha}: Formato de tempo inválido`);
+            continue;
           }
 
-          // Converter para o formato de string usado no app
-          const line = `${meta} | ${materia} | ${assunto} | ${tempo}`;
+          // Se passou em todas as validações, adiciona aos dados válidos
+          const line = `${meta} | ${materia} | ${assunto} | ${tempoFinal}`;
           processedLines.push(line);
-          console.log(`✅ Linha ${i} processada:`, line);
+          console.log(`✅ Linha ${numeroLinha} válida:`, line);
         }
 
         console.log('📊 Total de linhas processadas:', processedLines.length);
+        console.log('📊 Total de erros:', erros.length);
         console.log('📊 Linhas finais:', processedLines);
 
+        // Se houver erros, mostrar TODOS de uma vez
+        if (erros.length > 0) {
+          const mensagemErro = `Encontrados ${erros.length} erro(s) no arquivo:\n\n${erros.slice(0, 5).join('\n')}${erros.length > 5 ? `\n\n... e mais ${erros.length - 5} erro(s).` : ''}`;
+          toast.error(mensagemErro, {
+            duration: 8000,
+            style: {
+              maxWidth: '600px',
+              whiteSpace: 'pre-line'
+            }
+          });
+          console.error('❌ Erros encontrados:', erros);
+          return;
+        }
+
+        // Se não houver dados válidos
         if (processedLines.length === 0) {
-          toast.error('Nenhum dado válido encontrado no Excel. Certifique-se de preencher as linhas após o cabeçalho.', {
+          toast.error('Nenhum dado válido encontrado no Excel. Verifique se o arquivo contém linhas preenchidas após o cabeçalho.', {
             duration: 4000
           });
           return;
         }
 
-        // Inserir texto processado na textarea
+        // Sucesso! Inserir texto processado na textarea
         const finalText = processedLines.join('\n');
-        console.log('📊 Texto final para textarea:', finalText);
+        console.log('✅ Texto final para textarea:', finalText);
         setInput(finalText);
 
-        toast.success(`${processedLines.length} linha(s) carregada(s) do Excel. Revise e clique em "Adicionar ao Plano".`, {
+        toast.success(`✅ ${processedLines.length} linha(s) importada(s) com sucesso! Revise e clique em "Adicionar ao Plano".`, {
           duration: 4000,
           icon: '📊'
         });
