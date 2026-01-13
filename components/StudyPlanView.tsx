@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-// Fix: Added missing BookOpen import from lucide-react
-import { ChevronDown, ChevronRight, PlayCircle, CheckCircle, Search, Filter, BookOpen } from 'lucide-react';
+import { PlayCircle, CheckCircle, Search, BookOpen } from 'lucide-react';
 import { MetaGroup, Lesson } from '../types';
 import { formatSecondsToHHMMSS } from '../utils';
 
@@ -11,37 +10,57 @@ interface StudyPlanViewProps {
 }
 
 const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegisterStudy }) => {
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
-  const toggleModule = (id: string) => {
-    setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  // Flatten lessons from groupedCourses, preserving insertion order
+  const flattenedData = useMemo(() => {
+    return groupedCourses.map(meta => {
+      // Collect all lessons from all modules under this meta
+      const allLessons: Lesson[] = [];
+      meta.modules.forEach(mod => {
+        allLessons.push(...mod.lessons);
+      });
 
+      // Sort by createdAt to maintain insertion order
+      // If createdAt is not available, maintain the current order
+      allLessons.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        return 0;
+      });
+
+      return {
+        name: meta.name,
+        lessons: allLessons,
+        totalLessons: allLessons.length,
+        completedCount: allLessons.filter(l => l.isCompleted).length,
+        progress: allLessons.length > 0
+          ? (allLessons.filter(l => l.isCompleted).length / allLessons.length) * 100
+          : 0
+      };
+    });
+  }, [groupedCourses]);
+
+  // Apply search and filter
   const filteredData = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
 
-    return groupedCourses.map(meta => {
+    return flattenedData.map(meta => {
       const matchMeta = meta.name.toLowerCase().includes(searchLower);
 
       return {
         ...meta,
-        modules: meta.modules.map(mod => {
-          const matchMateria = mod.name.toLowerCase().includes(searchLower);
-
-          return {
-            ...mod,
-            lessons: mod.lessons.filter(l => {
-              const matchLesson = l.title.toLowerCase().includes(searchLower);
-              const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
-              return (matchMeta || matchMateria || matchLesson) && matchFilter;
-            })
-          };
-        }).filter(m => m.lessons.length > 0)
+        lessons: meta.lessons.filter(l => {
+          const matchLesson = l.title.toLowerCase().includes(searchLower) ||
+            l.materia.toLowerCase().includes(searchLower);
+          const matchFilter = filter === 'all' ? true : filter === 'completed' ? l.isCompleted : !l.isCompleted;
+          return (matchMeta || matchLesson) && matchFilter;
+        })
       };
-    }).filter(m => m.modules.length > 0);
-  }, [groupedCourses, searchTerm, filter]);
+    }).filter(m => m.lessons.length > 0);
+  }, [flattenedData, searchTerm, filter]);
 
   if (groupedCourses.length === 0) {
     return (
@@ -59,6 +78,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-4">
+      {/* Search and Filter Controls */}
       <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-2 z-10 space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
@@ -90,83 +110,90 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
         </div>
       </div>
 
+      {/* Meta Groups with Linear Lesson Lists */}
       <div className="space-y-8 pb-8">
         {filteredData.map((meta) => (
           <div key={meta.name} className="space-y-4">
-            <div className="flex items-center gap-2 pl-1">
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">{meta.name}</h2>
+            {/* Meta Header */}
+            <div className="flex items-center justify-between pl-1">
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
+                {meta.name}
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-medium text-slate-400">
+                  {meta.completedCount}/{meta.totalLessons} • {Math.round(meta.progress)}%
+                </span>
+                <div className="w-20 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-500 transition-all duration-1000"
+                    style={{ width: `${meta.progress}%` }}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-4">
-              {meta.modules.map((mod) => {
-                const materiaId = `${meta.name}-${mod.name}`;
-                const isOpen = expandedModules[materiaId] || searchTerm.length > 0;
-                return (
-                  <div key={materiaId} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm transition-all duration-300">
-                    <button
-                      onClick={() => toggleModule(materiaId)}
-                      className={`w-full flex items-center justify-between p-4 transition-all duration-300 ${isOpen
-                        ? 'bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                      <div className="flex items-center gap-4 text-left">
-                        <div className={`p-1.5 rounded-lg transition-all duration-300 ${isOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
-                          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight">{mod.name}</h3>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase mt-1 tracking-tighter">
-                            {mod.lessons.length} aulas • {Math.round(mod.progress)}% completo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
-                        <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${mod.progress}%` }} />
-                      </div>
-                    </button>
 
-                    {isOpen && (
-                      <div className="py-2">
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800 px-2">
-                          {mod.lessons.map((lesson) => (
-                            <div
-                              key={lesson.id}
-                              className="group flex items-center justify-between p-4 pl-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                            >
-                              <div className="flex-1 min-w-0 mr-4">
-                                <div className="flex items-center gap-2">
-                                  <p className={`text-sm font-medium truncate transition-all duration-300 ${lesson.isCompleted
-                                    ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
-                                    : 'text-slate-700 dark:text-slate-200'
-                                    }`}>
-                                    {lesson.title}
-                                  </p>
-                                </div>
-                                <p className={`text-[10px] font-mono mt-0.5 ${lesson.isCompleted
-                                  ? 'text-slate-300 dark:text-slate-600'
-                                  : 'text-slate-400'
-                                  }`}>
-                                  {formatSecondsToHHMMSS(lesson.durationSec)}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => onRegisterStudy(lesson)}
-                                className="flex-shrink-0 p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all active:scale-90"
-                              >
-                                {lesson.isCompleted ? (
-                                  <CheckCircle className="w-6 h-6 text-emerald-500" />
-                                ) : (
-                                  <PlayCircle className="w-6 h-6" />
-                                )}
-                              </button>
-                            </div>
-                          ))}
+            {/* Linear Lesson List */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {meta.lessons.map((lesson, index) => (
+                  <div
+                    key={lesson.id}
+                    className="group flex items-center justify-between p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0 mr-4">
+                      <div className="flex items-center gap-3">
+                        {/* Lesson Number/Index */}
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                          }`}>
+                          {index + 1}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          {/* Lesson Title */}
+                          <p className={`text-sm font-medium truncate transition-all duration-300 ${lesson.isCompleted
+                              ? 'text-slate-400 dark:text-slate-500 line-through opacity-60'
+                              : 'text-slate-700 dark:text-slate-200'
+                            }`}>
+                            {lesson.title}
+                          </p>
+
+                          {/* Lesson Metadata */}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${lesson.isCompleted
+                                ? 'text-slate-300 dark:text-slate-600'
+                                : 'text-indigo-500 dark:text-indigo-400'
+                              }`}>
+                              {lesson.materia}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">•</span>
+                            <p className={`text-[10px] font-mono ${lesson.isCompleted
+                                ? 'text-slate-300 dark:text-slate-600'
+                                : 'text-slate-400'
+                              }`}>
+                              {formatSecondsToHHMMSS(lesson.durationSec)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Action Button */}
+                    <button
+                      onClick={() => onRegisterStudy(lesson)}
+                      className="flex-shrink-0 p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all active:scale-90"
+                      title={lesson.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'}
+                    >
+                      {lesson.isCompleted ? (
+                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                      ) : (
+                        <PlayCircle className="w-6 h-6" />
+                      )}
+                    </button>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
         ))}

@@ -7,6 +7,7 @@ export interface Lesson {
   durationStr: string;
   durationSec: number;
   isCompleted?: boolean;
+  createdAt?: string;
 }
 
 export interface StudyLog {
