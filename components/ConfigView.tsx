@@ -209,8 +209,14 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
           console.log(`Linha ${i} - Meta: "${meta}", Matéria: "${materia}", Assunto: "${assunto}", Tempo: "${tempo}"`);
 
-          // Filtrar linha de exemplo (ignorar se contém exatamente o exemplo do template)
-          if (meta === 'Meta 1' && materia === 'Direito Constitucional') {
+          // Filtrar linha de exemplo do template (verificar meta, matéria E parte do assunto)
+          const isExampleRow = (
+            meta === 'Meta 1' &&
+            materia === 'Direito Constitucional' &&
+            assunto.toLowerCase().includes('direitos fundamentais')
+          );
+
+          if (isExampleRow) {
             console.log(`❌ Linha ${i} ignorada: linha de exemplo do template`);
             continue;
           }
