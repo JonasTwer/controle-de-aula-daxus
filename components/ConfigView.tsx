@@ -280,20 +280,24 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
         console.log('📊 Total de erros:', erros.length);
         console.log('📊 Linhas finais:', processedLines);
 
-        // Se houver erros, mostrar TODOS de uma vez com UX profissional
-        if (erros.length > 0) {
-          // Título inteligente: ajusta singular/plural automaticamente
-          const tituloErro = erros.length === 1
-            ? '⚠️ 1 erro encontrado:'
-            : `⚠️ ${erros.length} erros encontrados:`;
+        // ========================================
+        // PADRÃO VISUAL UNIFICADO: Título + Descrição
+        // ========================================
 
-          // Mostra até 5 erros + indica quantos foram omitidos
+        // CENÁRIO 1: ERROS ENCONTRADOS
+        if (erros.length > 0) {
+          // Título: Curto e direto com contagem correta
+          const termoErro = erros.length === 1 ? 'erro encontrado' : 'erros encontrados';
+          const tituloErro = `⚠️ ${erros.length} ${termoErro}`;
+
+          // Descrição: Lista limpa de erros (até 5)
           const listaErros = erros.slice(0, 5).join('\n');
-          const errosRestantes = erros.length > 5
+          const errosOmitidos = erros.length > 5
             ? `\n\n... e mais ${erros.length - 5} ${erros.length - 5 === 1 ? 'erro' : 'erros'}.`
             : '';
 
-          const mensagemErro = `${tituloErro}\n\n${listaErros}${errosRestantes}`;
+          // Estrutura Final: Título + quebra + Descrição
+          const mensagemErro = `${tituloErro}\n\n${listaErros}${errosOmitidos}`;
 
           toast.error(mensagemErro, {
             duration: 8000,
@@ -306,18 +310,31 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
           return;
         }
 
-        // Se não houver dados válidos (edge case)
+        // CENÁRIO 2: ARQUIVO VAZIO (Edge Case)
         if (processedLines.length === 0) {
-          toast.error('⚠️ Nenhum dado válido encontrado no Excel. Verifique se o arquivo contém linhas preenchidas após o cabeçalho.', {
-            duration: 4000
+          // Título + Descrição orientativa
+          const mensagemVazio = `⚠️ Nenhum dado válido encontrado\n\nVerifique se o arquivo contém linhas preenchidas após o cabeçalho.`;
+
+          toast.error(mensagemVazio, {
+            duration: 4000,
+            style: {
+              whiteSpace: 'pre-line'
+            }
           });
           return;
         }
 
-        // SUCESSO! Português perfeito com plural/singular correto
+        // CENÁRIO 3: SUCESSO!
+        // Título: Contagem correta (singular/plural)
         const qtd = processedLines.length;
-        const textoGramatical = qtd === 1 ? 'linha importada' : 'linhas importadas';
-        const mensagemSucesso = `✅ ${qtd} ${textoGramatical} com sucesso! Revise e clique em "Adicionar ao Plano".`;
+        const termoSucesso = qtd === 1 ? 'linha importada' : 'linhas importadas';
+        const tituloSucesso = `✅ ${qtd} ${termoSucesso}`;
+
+        // Descrição: Próximo passo claro
+        const descricaoSucesso = 'Revise os dados e clique em "Adicionar ao Plano".';
+
+        // Estrutura Final: Título + quebra + Descrição
+        const mensagemSucesso = `${tituloSucesso}\n${descricaoSucesso}`;
 
         // Inserir texto processado na textarea
         const finalText = processedLines.join('\n');
@@ -326,12 +343,21 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
 
         toast.success(mensagemSucesso, {
           duration: 4000,
-          icon: '📊'
+          icon: '📊',
+          style: {
+            whiteSpace: 'pre-line'
+          }
         });
 
       } catch (error: any) {
-        toast.error('Erro ao processar arquivo Excel. Verifique se o formato está correto.', {
-          duration: 4000
+        // Erro crítico de processamento
+        const mensagemCritica = `⚠️ Falha ao processar arquivo\n\nVerifique se o formato está correto (.xlsx).`;
+
+        toast.error(mensagemCritica, {
+          duration: 4000,
+          style: {
+            whiteSpace: 'pre-line'
+          }
         });
         console.error('Erro ao processar Excel:', error);
       }
