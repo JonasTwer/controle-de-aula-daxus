@@ -49,7 +49,7 @@ const AssistantView: React.FC<AssistantViewProps> = ({ contextData }) => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-160px)] animate-in fade-in duration-500">
-      <div className="flex-1 overflow-y-auto space-y-4 px-1 pb-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto space-y-4 px-1 pb-4 pt-4" ref={scrollRef}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-4 rounded-3xl text-sm shadow-sm ${msg.role === 'user'

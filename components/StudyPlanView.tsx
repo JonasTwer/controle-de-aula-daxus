@@ -166,8 +166,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-4">
-      {/* Modern Toolbar with Hybrid Layout */}
-      <div className="sticky top-[68px] bg-gray-50/90 dark:bg-slate-950/90 backdrop-blur-md py-4 z-10 space-y-4">
+      {/* Modern Toolbar with Hybrid Layout - Sticky com Offset Correto */}
+      <div className="sticky top-16 bg-slate-950/95 backdrop-blur-xl py-4 z-40 space-y-4 border-b border-slate-800/50 shadow-lg">
         {/* 1. Smart Search Bar (Largura Total) */}
         <div className="relative group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -196,8 +196,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                 key={f.id}
                 onClick={() => setFilter(f.id as any)}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filter === f.id
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
               >
                 {f.label}

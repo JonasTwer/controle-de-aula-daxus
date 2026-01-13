@@ -664,13 +664,35 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
                 <button
                   onClick={async () => {
                     toast((t) => (
-                      <div className="flex flex-col gap-3">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">Apagar curso "{course}"?</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Isso removerá todas as aulas e registros deste curso.</p>
-                        <div className="flex gap-2">
+                      <div className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-8 min-w-[400px] max-w-md animate-in zoom-in-95 duration-200">
+                        {/* Ícone de Alerta */}
+                        <div className="flex justify-center mb-6">
+                          <div className="w-16 h-16 rounded-full bg-red-900/40 flex items-center justify-center">
+                            <AlertTriangle className="w-8 h-8 text-red-500" strokeWidth={2.5} />
+                          </div>
+                        </div>
+
+                        {/* Título com Nome da Meta */}
+                        <h3 className="text-2xl font-black text-white text-center mb-4 tracking-tight">
+                          Excluir '{course}'?
+                        </h3>
+
+                        {/* Mensagem de Alerta */}
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4 mb-8">
+                          <p className="text-sm text-slate-300 text-center leading-relaxed">
+                            Você está prestes a remover{' '}
+                            <span className="font-bold text-white">esta meta</span> e{' '}
+                            <span className="font-bold text-white uppercase">todas as aulas</span>{' '}
+                            associadas a ela. Essa ação{' '}
+                            <span className="font-bold text-white">não pode ser desfeita</span>.
+                          </p>
+                        </div>
+
+                        {/* Botões */}
+                        <div className="flex gap-3">
                           <button
                             onClick={() => toast.dismiss(t.id)}
-                            className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all"
+                            className="flex-1 px-4 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 rounded-xl text-sm font-bold transition-all"
                           >
                             Cancelar
                           </button>
@@ -680,18 +702,19 @@ const ConfigView: React.FC<ConfigViewProps> = ({ onSaveData, onClearData, onDele
                               await onDeleteCourse(course);
                               fetchStats();
                             }}
-                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-900/50 transition-all"
                           >
-                            Excluir
+                            Confirmar
                           </button>
                         </div>
                       </div>
                     ), {
                       duration: Infinity,
+                      position: 'top-center',
                       style: {
-                        minWidth: '300px',
-                        background: '#fff',
-                        color: '#000',
+                        background: 'transparent',
+                        boxShadow: 'none',
+                        padding: 0,
                       },
                     });
                   }}
