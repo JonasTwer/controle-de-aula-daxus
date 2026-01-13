@@ -43,6 +43,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Query sem ordenação - a ordenação será feita no frontend após mapeamento
+      // para garantir compatibilidade com schemas antigos (theme/module) e novos (meta/materia)
       const { data: lData, error: lErr } = await supabase
         .from('lessons')
         .select('*')
@@ -283,28 +285,30 @@ const App: React.FC = () => {
       .filter(l => l.date === todayStr && l.status === 'completed')
       .reduce((acc, l) => acc + (l.durationSec || 0), 0);
 
+    // Agrupamento APENAS por Meta (sem agrupar por matéria)
+    // As aulas dentro de cada meta seguem a ordem de inserção (created_at)
     const metaGroups: { name: string, modules: { name: string, lessons: Lesson[] }[] }[] = [];
     const metaIndexMap: Record<string, number> = {};
-    const moduleIndexMap: Record<string, number> = {};
 
     enrichedLessons.forEach(l => {
+      // Cria Meta se não existir
       if (metaIndexMap[l.meta] === undefined) {
         metaIndexMap[l.meta] = metaGroups.length;
-        metaGroups.push({ name: l.meta, modules: [] });
+        metaGroups.push({
+          name: l.meta,
+          modules: [{ name: 'all', lessons: [] }] // Um único "módulo" virtual para todas as aulas
+        });
       }
       const mIdx = metaIndexMap[l.meta];
-      const modKey = `${l.meta}|${l.materia}`;
 
-      if (moduleIndexMap[modKey] === undefined) {
-        moduleIndexMap[modKey] = metaGroups[mIdx].modules.length;
-        metaGroups[mIdx].modules.push({ name: l.materia, lessons: [] });
-      }
-      const modIdx = moduleIndexMap[modKey];
-      metaGroups[mIdx].modules[modIdx].lessons.push(l);
+      // Adiciona a aula diretamente ao módulo único, preservando ordem de inserção
+      metaGroups[mIdx].modules[0].lessons.push(l);
     });
 
+    // Ordenação alfabética/numérica das Metas
     metaGroups.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
+    // Calcula progresso por Meta
     const grouped = metaGroups.map(meta => ({
       ...meta,
       modules: meta.modules.map(mod => {
@@ -312,7 +316,7 @@ const App: React.FC = () => {
         const mStud = mod.lessons.reduce((acc, l) => acc + (l.isCompleted ? (l.durationSec || 0) : 0), 0);
         return {
           name: mod.name,
-          lessons: mod.lessons,
+          lessons: mod.lessons, // Ordem de inserção preservada
           progress: mDur > 0 ? (mStud / mDur) * 100 : 0
         };
       })
