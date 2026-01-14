@@ -269,7 +269,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                 {meta.name}
               </h2>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 ml-auto">
                 <span className="text-[10px] font-medium text-slate-400">
                   {meta.completedCount}/{meta.totalLessons} • {Math.round(meta.progress)}%
                 </span>
