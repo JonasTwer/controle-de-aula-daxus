@@ -263,14 +263,14 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
           <div key={meta.name} className="space-y-4">
             {/* Meta Header - Sticky (Responsivo: mobile 64px, desktop 208px) */}
             <div
-              className="sticky top-[112px] md:top-[116px] z-30 -mx-4 px-6 py-4 mb-4 flex items-center justify-between w-full rounded-b-2xl bg-[#020617]"
+              className="sticky top-[112px] md:top-[203px] z-30 -mx-4 px-6 py-3 flex items-center justify-between w-full rounded-b-2xl bg-[#0f172a]"
               
             >
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap\">
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                 {meta.name}
               </h2>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap\">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-medium text-slate-400">
                   {meta.completedCount}/{meta.totalLessons} • {Math.round(meta.progress)}%
                 </span>
                 <div className="w-20 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -291,7 +291,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                     className="group flex items-center justify-between p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     {/* Container principal com items-center para centralização vertical */}
-                    <div className="flex items-center gap-2 flex-shrink-0 flex-1 min-w-0 mr-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
                       {/* Lesson Number/Index - Vertically Centered */}
                       <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all z-10 ${lesson.isCompleted
                         ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
