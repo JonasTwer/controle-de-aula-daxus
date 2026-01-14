@@ -262,13 +262,13 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
       <div className="space-y-8 pb-8" style={{ isolation: 'isolate', overflow: 'visible' }}>
         {filteredData.map((meta) => (
           <div key={meta.name} className="space-y-4">
-            {/* Meta Header - Sticky Section - Layout Restaurado (Esquerda/Direita) */}
+            {/* Meta Header - Sticky Section - MOBILE FIX COM FORÇA BRUTA */}
             <div
-              className="sticky -webkit-sticky z-40 -mx-4 px-6 py-3 flex items-center justify-between rounded-b-2xl"
+              className="meta-sticky-header sticky -webkit-sticky z-50 -mx-4 px-6 py-3 flex items-center justify-between rounded-b-2xl"
               style={{
                 top: 'calc(12.6875rem - 1px)',
                 backgroundColor: '#0f172a',
-                zIndex: 40
+                zIndex: 50
               }}
             >
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
