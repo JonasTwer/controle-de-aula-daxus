@@ -75,25 +75,77 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     };
   });
 
-  // Calcular previsão de conclusão
+  // Calcular previsão de conclusão com Média Ponderada Suavizada (Cold Start Fix)
   const getCompletionForecast = (): string => {
-    // Calcula velocidade média (últimos 7 dias)
-    const last7DaysTotal = last7Days.reduce((acc, day) => acc + day.minutes, 0);
-    const averagePerDay = last7DaysTotal / 7; // minutos por dia
+    // Se não há aulas restantes, retorna completo
+    if (stats.remainingCount === 0) {
+      return '✓ Completo';
+    }
 
-    if (averagePerDay === 0 || stats.remainingCount === 0) {
+    // Filtra apenas logs completados com duração válida
+    const completedLogs = logs.filter(l => l.status === 'completed' && (l.durationSec || 0) > 0);
+
+    if (completedLogs.length === 0) {
       return '---';
     }
 
-    // Converte tempo restante para minutos
-    const remainingMinutes = (stats.totalDuration - stats.totalStudied) / 60; // stats em segundos
+    // 1. IDENTIFICAÇÃO DA JANELA REAL
+    // Encontra a data da primeira aula concluída
+    const firstCompletedDate = completedLogs
+      .map(l => new Date(l.date + 'T00:00:00'))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
 
-    // Calcula dias necessários
-    const daysNeeded = Math.ceil(remainingMinutes / averagePerDay);
+    const today = new Date();
+    const diasDesdeOInicio = Math.max(
+      1,
+      Math.ceil((today.getTime() - firstCompletedDate.getTime()) / (1000 * 60 * 60 * 24))
+    );
 
-    // Data estimada
+    // Usa mínimo de 3 dias para evitar médias explosivas (Cold Start Protection)
+    const divisorDias = Math.max(diasDesdeOInicio, 3);
+
+    // 2. CÁLCULO DA VELOCIDADE (Minutes Per Day)
+    const totalMinutesEstudados = completedLogs.reduce(
+      (acc, l) => acc + ((l.durationSec || 0) / 60),
+      0
+    );
+
+    let velocidadeBase = totalMinutesEstudados / divisorDias;
+
+    // 3. TRATAMENTO DE INÉRCIA (Smoothing)
+    // Aplica penalidade de 20% se o usuário tem poucos dias de histórico
+    const diasUnicos = new Set(completedLogs.map(l => l.date)).size;
+
+    if (diasUnicos <= 3) {
+      // Penalidade conservadora: assume que nem todos os dias terão o mesmo ritmo
+      velocidadeBase *= 0.80; // Reduz 20%
+    }
+
+    if (velocidadeBase === 0) {
+      return '---';
+    }
+
+    // 4. DETECÇÃO DE PADRÃO DE FINS DE SEMANA
+    // Verifica se o usuário estuda em finais de semana
+    const estudouEmFDS = completedLogs.some(l => {
+      const d = new Date(l.date + 'T00:00:00');
+      const dayOfWeek = d.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6; // Domingo ou Sábado
+    });
+
+    // 5. CÁLCULO FINAL DA DATA
+    const remainingMinutes = (stats.totalDuration - stats.totalStudied) / 60;
+    let diasRestantes = Math.ceil(remainingMinutes / velocidadeBase);
+
+    // Se não estuda em FDS, adiciona dias extras
+    if (!estudouEmFDS && diasRestantes > 0) {
+      const semanasCompletas = Math.floor(diasRestantes / 5);
+      diasRestantes += semanasCompletas * 2; // Adiciona sábado e domingo
+    }
+
+    // Projeta data futura
     const forecast = new Date();
-    forecast.setDate(forecast.getDate() + daysNeeded);
+    forecast.setDate(forecast.getDate() + diasRestantes);
 
     return forecast.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
