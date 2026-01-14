@@ -167,7 +167,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-4">
       {/* Modern Toolbar with Hybrid Layout - Sticky com Offset Correto */}
-      <div className="sticky top-16 bg-slate-950/95 backdrop-blur-xl py-4 z-40 space-y-4 border-b border-slate-800/50 shadow-lg">
+      <div className="sticky top-16 py-4 z-40 space-y-4" style={{ backgroundColor: '#0f172a' }}>
         {/* 1. Smart Search Bar (Largura Total) */}
         <div className="relative group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -258,11 +258,11 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
       </div>
 
       {/* Meta Groups with Linear Lesson Lists */}
-      <div className="space-y-8 pb-8">
+      <div className="space-y-8 pb-8" style={{ isolation: 'isolate' }}>
         {filteredData.map((meta) => (
           <div key={meta.name} className="space-y-4">
-            {/* Meta Header */}
-            <div className="flex items-center justify-between pl-1">
+            {/* Meta Header - Sticky Section (iOS-style) - GUILHOTINA VISUAL COM CURVA */}
+            <div className="sticky top-[12.6875rem] z-30 -mx-4 px-5 py-3 flex items-center justify-between rounded-b-2xl rounded-t-none border-t-0 ring-0 outline-none shadow-none overflow-hidden" style={{ backgroundColor: '#0f172a', isolation: 'isolate', willChange: 'transform' }}>
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                 {meta.name}
               </h2>
@@ -280,7 +280,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
             </div>
 
             {/* Linear Lesson List */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255, 255, 255, 0.05)' }}>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {meta.lessons.map((lesson, index) => (
                   <div
@@ -290,7 +290,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
                     {/* Container principal com items-center para centralização vertical */}
                     <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
                       {/* Lesson Number/Index - Vertically Centered */}
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${lesson.isCompleted
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all z-10 ${lesson.isCompleted
                         ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                         }`}>
