@@ -460,7 +460,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 max-w-3xl w-full mx-auto pb-24 p-4">
+      <main className="flex-1 max-w-3xl w-full mx-auto pb-24 p-4" style={{ overflow: 'visible' }}>
         {activeTab === 'dashboard' && <DashboardView stats={processedData.stats} logs={logs} />}
         {activeTab === 'plan' && <StudyPlanView groupedCourses={processedData.grouped} onRegisterStudy={setModalLesson} />}
         {activeTab === 'assistant' && <AssistantView contextData={processedData} />}
