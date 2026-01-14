@@ -263,7 +263,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
           <div key={meta.name} className="space-y-4">
             {/* Meta Header - Sticky (Responsivo: mobile 64px, desktop 208px) */}
             <div
-              className="sticky top-16 md:top-52 z-30 -mx-4 px-6 py-3 flex items-center justify-between w-full rounded-b-2xl bg-slate-950"
+              className="sticky top-[112px] md:top-[203px] z-30 -mx-4 px-6 py-3 flex items-center justify-between w-full rounded-b-2xl bg-[#0f172a]"
               
             >
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
