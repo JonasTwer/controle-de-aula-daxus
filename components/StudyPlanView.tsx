@@ -261,8 +261,11 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
       <div className="space-y-8 pb-8">
         {filteredData.map((meta) => (
           <div key={meta.name} className="space-y-4">
-            {/* Meta Header - Sticky (Tailwind puro, top-16 = 64px) */}
-            <div className="sticky top-16 z-40 -mx-4 px-6 py-3 flex items-center justify-between rounded-b-2xl bg-[#0f172a]">
+            {/* Meta Header - Sticky (Responsivo: mobile 64px, desktop 208px) */}
+            <div
+              className="sticky top-16 md:top-52 z-30 -mx-4 px-6 py-3 flex items-center justify-between w-full rounded-b-2xl bg-slate-950"
+              
+            >
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                 {meta.name}
               </h2>
