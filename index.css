@@ -43,9 +43,3 @@ textarea {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-/* Mobile Sticky Fix - Apenas o Essencial */
-.meta-sticky-header {
-  position: -webkit-sticky !important;
-  position: sticky !important;
-}

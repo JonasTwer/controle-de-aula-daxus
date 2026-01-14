@@ -257,20 +257,12 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ groupedCourses, onRegiste
         </div>
       </div>
 
-      {/* Meta Groups with Linear Lesson Lists */}
-      {/* CRITICAL: overflow-visible necessário para sticky funcionar no mobile */}
-      <div className="space-y-8 pb-8" style={{ isolation: 'isolate', overflow: 'visible' }}>
+      {/* Meta Groups - Estrutura Reestruturada para Sticky Mobile */}
+      <div className="space-y-8 pb-8">
         {filteredData.map((meta) => (
           <div key={meta.name} className="space-y-4">
-            {/* Meta Header - Sticky Section - Código Limpo */}
-            <div
-              className="meta-sticky-header -mx-4 px-6 py-3 flex items-center justify-between rounded-b-2xl"
-              style={{
-                top: '12rem',  // Mobile: valor menor e fixo
-                backgroundColor: '#0f172a',
-                zIndex: 40
-              }}
-            >
+            {/* Meta Header - Sticky (Tailwind puro, top-16 = 64px) */}
+            <div className="sticky top-16 z-40 -mx-4 px-6 py-3 flex items-center justify-between rounded-b-2xl bg-[#0f172a]">
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                 {meta.name}
               </h2>
