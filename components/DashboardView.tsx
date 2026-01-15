@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { AppStats, StudyLog } from '../types';
 import { formatDateLocal } from '../utils';
+import { SmartForecastEngine } from '../utils/SmartForecastEngine';
 
 interface DashboardViewProps {
   stats: AppStats;
@@ -75,7 +76,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     };
   });
 
-  // Calcular previsão de conclusão com Média Ponderada Suavizada (Cold Start Fix)
+  // Calcular previsão de conclusão com Smart Forecast Engine V2 (Bayes + EWMA)
   const getCompletionForecast = (): string => {
     // Se não há aulas restantes, retorna completo
     if (stats.remainingCount === 0) {
@@ -89,65 +90,60 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       return '---';
     }
 
-    // 1. IDENTIFICAÇÃO DA JANELA REAL
-    // Encontra a data da primeira aula concluída
+    // 1. PREPARAÇÃO DOS DADOS
     const firstCompletedDate = completedLogs
       .map(l => new Date(l.date + 'T00:00:00'))
       .sort((a, b) => a.getTime() - b.getTime())[0];
 
     const today = new Date();
-    const diasDesdeOInicio = Math.max(
+    const daysActive = Math.max(
       1,
       Math.ceil((today.getTime() - firstCompletedDate.getTime()) / (1000 * 60 * 60 * 24))
     );
 
-    // Usa mínimo de 3 dias para evitar médias explosivas (Cold Start Protection)
-    const divisorDias = Math.max(diasDesdeOInicio, 3);
+    // 2. ⚠️ CALIBRAÇÃO V2.2: CONTAGEM DE AULAS (não minutos!)
+    // Motivo: Aulas são unidades limpas; minutos são ruidosos (pausas, velocidade, etc.)
+    const completedItems = completedLogs.length; // Número de aulas concluídas
+    const remainingItems = stats.remainingCount;  // Número de aulas restantes
 
-    // 2. CÁLCULO DA VELOCIDADE (Minutes Per Day)
-    const totalMinutesEstudados = completedLogs.reduce(
-      (acc, l) => acc + ((l.durationSec || 0) / 60),
-      0
-    );
-
-    let velocidadeBase = totalMinutesEstudados / divisorDias;
-
-    // 3. TRATAMENTO DE INÉRCIA (Smoothing)
-    // Aplica penalidade de 20% se o usuário tem poucos dias de histórico
-    const diasUnicos = new Set(completedLogs.map(l => l.date)).size;
-
-    if (diasUnicos <= 3) {
-      // Penalidade conservadora: assume que nem todos os dias terão o mesmo ritmo
-      velocidadeBase *= 0.80; // Reduz 20%
-    }
-
-    if (velocidadeBase === 0) {
-      return '---';
-    }
-
-    // 4. DETECÇÃO DE PADRÃO DE FINS DE SEMANA
-    // Verifica se o usuário estuda em finais de semana
-    const estudouEmFDS = completedLogs.some(l => {
-      const d = new Date(l.date + 'T00:00:00');
-      const dayOfWeek = d.getDay();
-      return dayOfWeek === 0 || dayOfWeek === 6; // Domingo ou Sábado
+    // 3. PREPARAR HISTÓRICO DOS ÚLTIMOS DIAS (para Mediana + EWMA)
+    const recentDailyProgress: number[] = [];
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return formatDateLocal(d);
     });
 
-    // 5. CÁLCULO FINAL DA DATA
-    const remainingMinutes = (stats.totalDuration - stats.totalStudied) / 60;
-    let diasRestantes = Math.ceil(remainingMinutes / velocidadeBase);
+    // Calcula AULAS CONCLUÍDAS por dia (não minutos!)
+    last7Days.forEach(dateStr => {
+      const dailyItems = completedLogs
+        .filter(l => l.date === dateStr)
+        .length; // Conta aulas, não soma tempo
+      recentDailyProgress.push(dailyItems);
+    });
 
-    // Se não estuda em FDS, adiciona dias extras
-    if (!estudouEmFDS && diasRestantes > 0) {
-      const semanasCompletas = Math.floor(diasRestantes / 5);
-      diasRestantes += semanasCompletas * 2; // Adiciona sábado e domingo
+    // 4. APLICAR SMART FORECAST ENGINE V2 (Bayes + Mediana + EWMA)
+    // Recupera velocidade EWMA anterior do localStorage (para continuidade)
+    const storedEwmaKey = 'forecast_ewma_velocity';
+    const previousEwmaVelocity = localStorage.getItem(storedEwmaKey)
+      ? parseFloat(localStorage.getItem(storedEwmaKey)!)
+      : undefined;
+
+    const { date, phase, velocity } = SmartForecastEngine.quickForecast(
+      completedItems,        // ✅ AULAS concluídas (não minutos!)
+      remainingItems,        // ✅ AULAS restantes (não minutos!)
+      daysActive,
+      recentDailyProgress,   // ✅ Array de [aulas/dia] dos últimos 7 dias
+      previousEwmaVelocity   // ✅ Ativa continuidade do EWMA
+    );
+
+    // Salva nova velocidade EWMA para próxima execução (se estiver em fase madura)
+    if (phase === 'MATURITY') {
+      localStorage.setItem(storedEwmaKey, velocity.toString());
     }
 
-    // Projeta data futura
-    const forecast = new Date();
-    forecast.setDate(forecast.getDate() + diasRestantes);
-
-    return forecast.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    // 5. RETORNAR DATA FORMATADA
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
   return (
@@ -212,12 +208,19 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
             </div>
           </div>
 
-          {/* NOVO CARD: PREVISÃO DE FIM */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Previsão de Fim</span>
+          {/* NOVO CARD: CONCLUSÃO ESTIMADA */}
+          <div
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-5 rounded-[28px] shadow-sm group relative"
+            title="Cálculo estabilizado por IA (Bayes/EWMA)"
+          >
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-300 block mb-3">Conclusão Estimada</span>
             <div className="flex items-center gap-2">
               <Flag className="w-5 h-5 text-emerald-500" />
               <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white whitespace-nowrap">{getCompletionForecast()}</span>
+            </div>
+            {/* Tooltip on hover */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+              Cálculo estabilizado por IA (Bayes/EWMA)
             </div>
           </div>
         </div>
