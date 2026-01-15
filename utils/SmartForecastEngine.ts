@@ -1,11 +1,14 @@
 import { addDays, startOfDay, differenceInCalendarDays } from 'date-fns';
 
+// --- CONFIGURAÇÃO CALIBRADA (V2.2 FINAL) ---
 export const FORECAST_CONFIG = {
-    BAYES_C: 7, // Inércia Bayesiana: 7 dias virtuais de "âncora"
-    GLOBAL_VELOCITY_PRIOR: 5, // ⚠️ CALIBRADO: 5 AULAS por dia (NÃO minutos!)
-    EWMA_ALPHA: 0.2, // Reatividade: 20% peso para novos dados
-    MEDIAN_WINDOW_SIZE: 3, // Janela do filtro anti-outlier
-    COLD_START_DAYS: 14 // Transição: Bayes → EWMA após 14 dias
+    BAYES_C: 7,               // Inércia de 7 dias (Empréstimo de Força)
+    GLOBAL_VELOCITY_PRIOR: 5, // ⚠️ CALIBRADO: 5 AULAS/DIA (Não minutos!)
+    EWMA_ALPHA: 0.2,          // Foco nos últimos ~7-10 dias
+    MEDIAN_WINDOW_SIZE: 3,    // Janela ímpar para matar outliers
+    COLD_START_DAYS: 14,
+    SEASONALITY_LEARNING_RATE: 0.05, // Taxa de aprendizado lenta
+    EPSILON: 0.1              // Proteção contra divisão por zero
 };
 
 export interface ForecastState {
@@ -14,52 +17,95 @@ export interface ForecastState {
     itemsCompletedTotal: number;
     lastEwmaVelocity: number | null;
     velocityBuffer: number[];
-    seasonalIndices: number[];
+    seasonalIndices: number[]; // Array[7], inicia tudo com 1.0
 }
 
 export class SmartForecastEngine {
 
     public static processDailyUpdate(
-        input: { date: Date, itemsCompleted: number },
+        input: { date: Date, itemsCompleted: number }, // ⚠️ Input deve ser contagem de aulas
         state: ForecastState,
-        totalItems: number
+        totalItemsToFinish: number
     ) {
         const newState = { ...state };
-        const daysActive = Math.max(1, differenceInCalendarDays(new Date(), new Date(state.startDate)) + 1);
+        const today = startOfDay(new Date());
+        const start = startOfDay(new Date(newState.startDate));
+        const daysActive = Math.max(1, differenceInCalendarDays(today, start) + 1);
 
-        // Atualiza totalizadores
+        // 1. ATUALIZAÇÃO DO BUFFER (✅ O dado de hoje entra ANTES do cálculo)
         newState.itemsCompletedTotal += input.itemsCompleted;
         newState.velocityBuffer.push(input.itemsCompleted);
-        if (newState.velocityBuffer.length > FORECAST_CONFIG.MEDIAN_WINDOW_SIZE) newState.velocityBuffer.shift();
+        if (newState.velocityBuffer.length > FORECAST_CONFIG.MEDIAN_WINDOW_SIZE) {
+            newState.velocityBuffer.shift();
+        }
 
         let velocity: number;
         let phase: 'COLD_START' | 'MATURITY';
 
-        // LÓGICA CENTRAL
+        // 2. ROTEAMENTO DE FASE
         if (daysActive <= FORECAST_CONFIG.COLD_START_DAYS) {
             phase = 'COLD_START';
-            // AQUI ESTÁ A PROTEÇÃO DO DIA 3:
-            // O divisor cresce (C + 3), mas o numerador tem o peso (C * Prior).
-            // O zero dilui a velocidade suavemente, sem choques.
+            // Fórmula Bayesiana: (C*Prior + Real) / (C + N)
             const C = FORECAST_CONFIG.BAYES_C;
-            const prior = FORECAST_CONFIG.GLOBAL_VELOCITY_PRIOR;
-            velocity = (C * prior + newState.itemsCompletedTotal) / (C + daysActive);
+            const mu = FORECAST_CONFIG.GLOBAL_VELOCITY_PRIOR;
+            velocity = (C * mu + newState.itemsCompletedTotal) / (C + daysActive);
+
+            // Prepara transição suave
+            newState.lastEwmaVelocity = velocity;
         } else {
             phase = 'MATURITY';
-            // PROTEÇÃO FUTURA (Mediana):
+
+            // A) Filtro de Mediana (Ignora o zero se tiver histórico bom)
             const cleanInput = this.calculateMedian(newState.velocityBuffer);
 
-            // Seeding logic se necessário
+            // B) Dessazonalização
+            const dow = new Date().getDay();
+            const seasonality = Math.max(FORECAST_CONFIG.EPSILON, newState.seasonalIndices[dow] || 1.0);
+            const adjustedInput = cleanInput / seasonality;
+
+            // C) EWMA (Tendência)
             const alpha = FORECAST_CONFIG.EWMA_ALPHA;
-            const prev = state.lastEwmaVelocity || cleanInput; // Fallback seguro
-            velocity = alpha * cleanInput + (1 - alpha) * prev;
-            newState.lastEwmaVelocity = velocity;
+            const prev = newState.lastEwmaVelocity || adjustedInput;
+            const newEwma = (alpha * adjustedInput) + ((1 - alpha) * prev);
+            newState.lastEwmaVelocity = newEwma;
+            velocity = newEwma;
+
+            // D) Aprendizado Sazonal (Update + ✅ Renormalização)
+            this.updateSeasonality(newState, cleanInput, newEwma, dow);
         }
 
-        // Projeção (Burndown Simulado)
-        const prediction = this.predictBurndown(velocity, totalItems - newState.itemsCompletedTotal);
+        // 3. PROJEÇÃO (Burndown Simulado)
+        const itemsRemaining = totalItemsToFinish - newState.itemsCompletedTotal;
+        const prediction = this.predictCompletionDate(velocity, itemsRemaining, newState.seasonalIndices);
 
-        return { newState, prediction: { ...prediction, velocity, phase } };
+        return {
+            newState,
+            prediction: {
+                ...prediction,
+                phase,
+                currentVelocity: velocity,
+                confidence: phase === 'MATURITY' ? 0.85 : 0.4
+            }
+        };
+    }
+
+    private static predictCompletionDate(velocity: number, itemsRemaining: number, indices: number[]) {
+        if (velocity <= 0.1) return { date: addDays(new Date(), 365), days: 365 };
+
+        let remaining = itemsRemaining;
+        let currentDate = new Date();
+        let days = 0;
+
+        // Simulação dia-a-dia para precisão máxima
+        while (remaining > 0 && days < 730) {
+            currentDate = addDays(currentDate, 1);
+            days++;
+            const dow = currentDate.getDay();
+            const factor = indices[dow] || 1.0;
+            remaining -= (velocity * factor);
+        }
+
+        return { date: currentDate, days };
     }
 
     private static calculateMedian(values: number[]): number {
@@ -68,15 +114,25 @@ export class SmartForecastEngine {
         return sorted[Math.floor(sorted.length / 2)];
     }
 
-    private static predictBurndown(velocity: number, remaining: number) {
-        // Implementação simplificada para o prompt:
-        if (velocity <= 0.1) return { date: addDays(new Date(), 365), daysRemaining: 365 };
-        const days = Math.ceil(remaining / velocity);
-        return { date: addDays(new Date(), days), daysRemaining: days };
+    private static updateSeasonality(state: ForecastState, actual: number, trend: number, dow: number) {
+        if (trend <= FORECAST_CONFIG.EPSILON) return;
+
+        const ratio = actual / trend;
+        const oldIndex = state.seasonalIndices[dow] || 1.0;
+        const beta = FORECAST_CONFIG.SEASONALITY_LEARNING_RATE;
+
+        // Update
+        state.seasonalIndices[dow] = (1 - beta) * oldIndex + (beta * ratio);
+
+        // ✅ RENORMALIZAÇÃO OBRIGATÓRIA (Evita Drift)
+        const sum = state.seasonalIndices.reduce((a, b) => a + b, 0);
+        if (sum > 0) {
+            state.seasonalIndices = state.seasonalIndices.map(v => (v / sum) * 7);
+        }
     }
 
     /**
-     * Factory simplificado: Cria estado inicial para um novo usuário
+     * Factory: Cria estado inicial para um novo usuário
      */
     public static createInitialState(userId: string, startDate: string): ForecastState {
         return {
@@ -85,20 +141,17 @@ export class SmartForecastEngine {
             itemsCompletedTotal: 0,
             lastEwmaVelocity: null,
             velocityBuffer: [],
-            seasonalIndices: []
+            seasonalIndices: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] // ✅ Inicia normalizado (soma = 7)
         };
     }
 
     /**
      * Helper: Calcula previsão diretamente dos logs (sem estado persistido)
-     * Útil para sistemas legados que não armazenam ForecastState
-     * 
-     * @param recentDailyProgress - Array com progresso dos últimos dias (para Mediana)
-     * @param previousEwmaVelocity - Velocidade EWMA anterior (para continuidade)
+     * ⚠️ IMPORTANTE: completedItems e remainingItems devem ser CONTAGEM DE AULAS, não minutos!
      */
     public static quickForecast(
-        completedMinutes: number,
-        remainingMinutes: number,
+        completedItems: number,
+        remainingItems: number,
         daysActive: number,
         recentDailyProgress?: number[],
         previousEwmaVelocity?: number
@@ -111,7 +164,7 @@ export class SmartForecastEngine {
             phase = 'COLD_START';
             const C = FORECAST_CONFIG.BAYES_C;
             const prior = FORECAST_CONFIG.GLOBAL_VELOCITY_PRIOR;
-            velocity = (C * prior + completedMinutes) / (C + daysActive);
+            velocity = (C * prior + completedItems) / (C + daysActive);
         } else {
             // ✅ FASE MADURA: Cascata de Filtros (Mediana → EWMA)
             phase = 'MATURITY';
@@ -123,7 +176,7 @@ export class SmartForecastEngine {
                 cleanVelocity = this.calculateMedian(recentDailyProgress);
             } else {
                 // Fallback: média simples (quando não há histórico recente)
-                cleanVelocity = completedMinutes / daysActive;
+                cleanVelocity = completedItems / daysActive;
             }
 
             // 2. EWMA (Exponential Weighted Moving Average)
@@ -132,7 +185,10 @@ export class SmartForecastEngine {
             velocity = alpha * cleanVelocity + (1 - alpha) * prevVelocity;
         }
 
-        const prediction = this.predictBurndown(velocity, remainingMinutes);
-        return { date: prediction.date, phase, velocity };
+        // Projeção simples (sem sazonalidade no quickForecast)
+        const days = Math.ceil(remainingItems / Math.max(velocity, FORECAST_CONFIG.EPSILON));
+        const date = addDays(new Date(), days);
+
+        return { date, phase, velocity };
     }
 }
