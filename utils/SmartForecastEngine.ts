@@ -1,14 +1,24 @@
 import { addDays, startOfDay, differenceInCalendarDays } from 'date-fns';
 
-// --- CONFIGURAÇÃO CALIBRADA (V2.2 FINAL) ---
+// --- CONFIGURAÇÃO CALIBRADA (V3.0 - CRÉDITOS DE ESFORÇO) ---
 export const FORECAST_CONFIG = {
     BAYES_C: 7,               // Inércia de 7 dias (Empréstimo de Força)
-    GLOBAL_VELOCITY_PRIOR: 5, // ⚠️ CALIBRADO: 5 AULAS/DIA (Não minutos!)
+    GLOBAL_VELOCITY_PRIOR: 5.0, // ⚠️ V3.0: 5.0 CRÉDITOS/DIA (não aulas!)
+    CREDIT_DIVISOR: 15,       // 15 minutos = 1.0 crédito
     EWMA_ALPHA: 0.2,          // Foco nos últimos ~7-10 dias
     MEDIAN_WINDOW_SIZE: 3,    // Janela ímpar para matar outliers
     COLD_START_DAYS: 14,
     SEASONALITY_LEARNING_RATE: 0.05, // Taxa de aprendizado lenta
     EPSILON: 0.1              // Proteção contra divisão por zero
+};
+
+/**
+ * V3.0: Calcula peso da aula baseado na duração
+ * @param durationMinutes - Duração da aula em minutos
+ * @returns Créditos de esforço (15 min = 1.0 crédito; 3h = 12.0 créditos)
+ */
+export const calculateWeight = (durationMinutes: number): number => {
+    return Math.max(0.1, durationMinutes / FORECAST_CONFIG.CREDIT_DIVISOR);
 };
 
 export interface ForecastState {
@@ -23,7 +33,7 @@ export interface ForecastState {
 export class SmartForecastEngine {
 
     public static processDailyUpdate(
-        input: { date: Date, itemsCompleted: number }, // ⚠️ Input deve ser contagem de aulas
+        input: { date: Date, itemsCompleted: number }, // ⚠️ V3.0: itemsCompleted agora é CRÉDITOS (não contagem!)
         state: ForecastState,
         totalItemsToFinish: number
     ) {
@@ -32,7 +42,7 @@ export class SmartForecastEngine {
         const start = startOfDay(new Date(newState.startDate));
         const daysActive = Math.max(1, differenceInCalendarDays(today, start) + 1);
 
-        // 1. ATUALIZAÇÃO DO BUFFER (✅ O dado de hoje entra ANTES do cálculo)
+        // 1. ATUALIZAÇÃO DO BUFFER (✅ V3.0: Créditos entram no buffer)
         newState.itemsCompletedTotal += input.itemsCompleted;
         newState.velocityBuffer.push(input.itemsCompleted);
         if (newState.velocityBuffer.length > FORECAST_CONFIG.MEDIAN_WINDOW_SIZE) {
@@ -147,7 +157,13 @@ export class SmartForecastEngine {
 
     /**
      * Helper: Calcula previsão diretamente dos logs (sem estado persistido)
-     * ⚠️ IMPORTANTE: completedItems e remainingItems devem ser CONTAGEM DE AULAS, não minutos!
+     * ⚠️ V3.0: completedItems e remainingItems devem ser SOMA DE CRÉDITOS, não contagem!
+     * 
+     * @param completedItems - Soma dos créditos de aulas concluídas
+     * @param remainingItems - Soma dos créditos de aulas restantes
+     * @param daysActive - Número de dias desde a primeira aula
+     * @param recentDailyProgress - Array de créditos/dia dos últimos dias
+     * @param previousEwmaVelocity - Velocidade EWMA anterior (para continuidade)
      */
     public static quickForecast(
         completedItems: number,

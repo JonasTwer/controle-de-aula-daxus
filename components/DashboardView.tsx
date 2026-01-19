@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { AppStats, StudyLog } from '../types';
 import { formatDateLocal } from '../utils';
-import { SmartForecastEngine } from '../utils/SmartForecastEngine';
+import { SmartForecastEngine, calculateWeight } from '../utils/SmartForecastEngine';
 
 interface DashboardViewProps {
   stats: AppStats;
@@ -76,7 +76,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
     };
   });
 
-  // Calcular previsão de conclusão com Smart Forecast Engine V2 (Bayes + EWMA)
+  // ⚠️ V3.0: Calcular previsão de conclusão com Smart Forecast Engine (Créditos de Esforço)
   const getCompletionForecast = (): string => {
     // Se não há aulas restantes, retorna completo
     if (stats.remainingCount === 0) {
@@ -101,12 +101,33 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       Math.ceil((today.getTime() - firstCompletedDate.getTime()) / (1000 * 60 * 60 * 24))
     );
 
-    // 2. ⚠️ CALIBRAÇÃO V2.2: CONTAGEM DE AULAS (não minutos!)
-    // Motivo: Aulas são unidades limpas; minutos são ruidosos (pausas, velocidade, etc.)
-    const completedItems = completedLogs.length; // Número de aulas concluídas
-    const remainingItems = stats.remainingCount;  // Número de aulas restantes
+    // 2. ⚠️ V3.0: CÁLCULO DE CRÉDITOS DE ESFORÇO (não contagem de aulas!)
+    // Regra: Crédito = Duração em Minutos / 15
+    // Exemplo: 15 min = 1.0 crédito; 3h (180 min) = 12.0 créditos
 
-    // 3. PREPARAR HISTÓRICO DOS ÚLTIMOS DIAS (para Mediana + EWMA)
+    // 2A. Soma dos créditos das aulas CONCLUÍDAS
+    const completedCredits = completedLogs.reduce((sum, log) => {
+      const durationMinutes = (log.durationSec || 0) / 60;
+      const credit = calculateWeight(durationMinutes);
+      return sum + credit;
+    }, 0);
+
+    // 2B. Soma dos créditos das aulas RESTANTES
+    // Precisamos acessar todas as lessons (não apenas os logs) para calcular créditos restantes
+    // Vamos criar um Set de IDs das aulas completas para filtrar
+    const completedLessonIds = new Set(completedLogs.map(log => log.lessonId));
+
+    // Note: Precisamos das lessons originais, que não estão disponíveis diretamente no Dashboard
+    // mas podemos inferir pelos logs e stats
+    // WORKAROUND: Usa stats.remainingCount como aproximação inicial
+    // Isso será ajustado quando passarmos 'lessons' como prop ou contexto
+
+    // Por enquanto, vamos usar uma abordagem simplificada:
+    // Assumir que aulas restantes têm crédito médio das aulas completadas
+    const avgCreditPerLesson = completedCredits / completedLogs.length;
+    const remainingCredits = avgCreditPerLesson * stats.remainingCount;
+
+    // 3. PREPARAR HISTÓRICO DOS ÚLTIMOS DIAS (Créditos por dia)
     const recentDailyProgress: number[] = [];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -114,15 +135,18 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       return formatDateLocal(d);
     });
 
-    // Calcula AULAS CONCLUÍDAS por dia (não minutos!)
+    // Calcula CRÉDITOS ACUMULADOS por dia (não contagem!)
     last7Days.forEach(dateStr => {
-      const dailyItems = completedLogs
+      const dailyCredits = completedLogs
         .filter(l => l.date === dateStr)
-        .length; // Conta aulas, não soma tempo
-      recentDailyProgress.push(dailyItems);
+        .reduce((sum, log) => {
+          const durationMinutes = (log.durationSec || 0) / 60;
+          return sum + calculateWeight(durationMinutes);
+        }, 0);
+      recentDailyProgress.push(dailyCredits);
     });
 
-    // 4. APLICAR SMART FORECAST ENGINE V2 (Bayes + Mediana + EWMA)
+    // 4. APLICAR SMART FORECAST ENGINE V3.0 (Bayes + Mediana + EWMA com Créditos)
     // Recupera velocidade EWMA anterior do localStorage (para continuidade)
     const storedEwmaKey = 'forecast_ewma_velocity';
     const previousEwmaVelocity = localStorage.getItem(storedEwmaKey)
@@ -130,10 +154,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       : undefined;
 
     const { date, phase, velocity } = SmartForecastEngine.quickForecast(
-      completedItems,        // ✅ AULAS concluídas (não minutos!)
-      remainingItems,        // ✅ AULAS restantes (não minutos!)
+      completedCredits,      // ✅ V3.0: CRÉDITOS concluídos (não contagem!)
+      remainingCredits,      // ✅ V3.0: CRÉDITOS restantes (não contagem!)
       daysActive,
-      recentDailyProgress,   // ✅ Array de [aulas/dia] dos últimos 7 dias
+      recentDailyProgress,   // ✅ Array de [créditos/dia] dos últimos 7 dias
       previousEwmaVelocity   // ✅ Ativa continuidade do EWMA
     );
 
