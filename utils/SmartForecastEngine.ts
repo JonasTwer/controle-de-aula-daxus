@@ -201,9 +201,13 @@ export class SmartForecastEngine {
             velocity = alpha * cleanVelocity + (1 - alpha) * prevVelocity;
         }
 
-        // Projeção simples (sem sazonalidade no quickForecast)
+        // ⚠️ AÇÃO 3: PROJEÇÃO COM DATA BASE = HOJE (Relatório C - Pilar 134)
+        // CRÍTICO: Usa new Date() (HOJE) como base, NÃO a data do último log!
+        // Isso garante que a previsão "corra para longe" a cada dia de inatividade.
+        // Exemplo: Usuário parou dia 14/01, hoje é 19/01 → base = 19/01 (não 14/01)
+        // EFEITO: Cada dia inativo aumenta a distância até a conclusão.
         const days = Math.ceil(remainingItems / Math.max(velocity, FORECAST_CONFIG.EPSILON));
-        const date = addDays(new Date(), days);
+        const date = addDays(new Date(), days); // ← new Date() = HOJE!
 
         return { date, phase, velocity };
     }

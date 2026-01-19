@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip
 } from 'recharts';
@@ -9,7 +9,10 @@ import {
 } from 'lucide-react';
 import { AppStats, StudyLog } from '../types';
 import { formatDateLocal } from '../utils';
-import { SmartForecastEngine, calculateWeight } from '../utils/SmartForecastEngine';
+import { SmartForecastEngine, calculateWeight, FORECAST_CONFIG } from '../utils/SmartForecastEngine';
+
+// ⚠️ VERSIONING: Qualquer mudança no algoritmo incrementa esta constante
+const FORECAST_ENGINE_VERSION = '3.0.0';
 
 interface DashboardViewProps {
   stats: AppStats;
@@ -51,6 +54,31 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
+
+  // ⚠️ AÇÃO 2: PURGA DE CACHE VICIADO (Executado 1x por sessão)
+  useEffect(() => {
+    const storedVersion = localStorage.getItem('forecast_engine_version');
+    const storedEwmaKey = 'forecast_ewma_velocity';
+
+    // Se versão não existe OU é diferente de V3.0, limpar cache antigo
+    if (!storedVersion || storedVersion !== FORECAST_ENGINE_VERSION) {
+      console.log('🔧 [FORECAST] Detectado motor antigo ou ausente');
+      console.log(`   Versão armazenada: ${storedVersion || 'NENHUMA'}`);
+      console.log(`   Versão atual: ${FORECAST_ENGINE_VERSION}`);
+      console.log('   ⚠️ LIMPANDO CACHE VICIADO...');
+
+      // Limpar velocidade EWMA antiga
+      localStorage.removeItem(storedEwmaKey);
+
+      // Salvar nova versão
+      localStorage.setItem('forecast_engine_version', FORECAST_ENGINE_VERSION);
+
+      console.log('   ✅ Cache limpo! Sistema agora usa V3.0 puro.');
+    } else {
+      console.log(`✅ [FORECAST] Motor V3.0 já ativo (versão ${storedVersion})`);
+    }
+  }, []); // Executa apenas uma vez no mount
+
   // Filtering only completed logs and sorting to get the 5 most recent activities
   const recentActivity = logs
     .filter(log => log.status === 'completed')
@@ -96,10 +124,34 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       .sort((a, b) => a.getTime() - b.getTime())[0];
 
     const today = new Date();
+
+    // ⚠️ AÇÃO 1: INTEGRIDADE TEMPORAL (Relatório C - Pilar 134)
+    // daysActive = DIAS CORRIDOS (primeira aula → HOJE), NÃO dias de estudo!
+    // Isso garante que o divisor bayesiano ($N_{days}$) reflita o tempo REAL decorrido.
+    // Exemplo: Usuário estudou dia 1, parou 5 dias → daysActive = 6 (não 1!)
+    // EFEITO: Velocidade cai, previsão "corre para longe" a cada dia de inatividade.
+    // Isso implementa a "Justiça da Constância" (Relatório C).
     const daysActive = Math.max(
       1,
       Math.ceil((today.getTime() - firstCompletedDate.getTime()) / (1000 * 60 * 60 * 24))
     );
+
+    // 🔍 LOGGING TEMPORAL (Debug)
+    const daysWithStudy = new Set(completedLogs.map(l => l.date)).size;
+    const daysInactive = daysActive - daysWithStudy;
+
+    console.log('📅 [TEMPORAL] Integridade da Série Temporal:');
+    console.log(`   Primeira aula: ${firstCompletedDate.toLocaleDateString('pt-BR')}`);
+    console.log(`   Hoje: ${today.toLocaleDateString('pt-BR')}`);
+    console.log(`   Dias CORRIDOS (real): ${daysActive} dias ← Usado no cálculo Bayesiano`);
+    console.log(`   Dias COM ESTUDO: ${daysWithStudy} dias`);
+    console.log(`   Dias INATIVOS: ${daysInactive} dias (${((daysInactive / daysActive) * 100).toFixed(1)}% do tempo)`);
+
+    if (daysInactive > 0) {
+      console.log(`   ⚠️ EFEITO: Velocidade penalizada por inatividade!`);
+      console.log(`      → Divisor bayesiano = ${daysActive} (não ${daysWithStudy})`);
+      console.log(`      → Previsão "correrá para longe" enquanto usuário não estudar`);
+    }
 
     // 2. ⚠️ V3.0: CÁLCULO DE CRÉDITOS DE ESFORÇO (não contagem de aulas!)
     // Regra: Crédito = Duração em Minutos / 15
@@ -160,6 +212,35 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       recentDailyProgress,   // ✅ Array de [créditos/dia] dos últimos 7 dias
       previousEwmaVelocity   // ✅ Ativa continuidade do EWMA
     );
+
+    // 🔍 LOGGING DO RESULTADO (Debug)
+    console.log('🚀 [FORECAST] Resultado do Motor V3.0:');
+    console.log(`   Fase: ${phase}`);
+    console.log(`   Velocidade: ${velocity.toFixed(2)} créd/dia (~${(velocity * 15).toFixed(0)} min/dia)`);
+    console.log(`   Créditos restantes: ${remainingCredits.toFixed(2)}`);
+    console.log(`   Dias estimados: ${Math.ceil(remainingCredits / velocity)}`);
+    console.log(`   Data de conclusão: ${date.toLocaleDateString('pt-BR')}`);
+
+    if (phase === 'COLD_START') {
+      const C = FORECAST_CONFIG.BAYES_C;
+      const prior = FORECAST_CONFIG.GLOBAL_VELOCITY_PRIOR;
+      const expectedVelocity = (C * prior + completedCredits) / (C + daysActive);
+      console.log(`   📐 Fórmula Bayesiana:`);
+      console.log(`      v = (${C} × ${prior} + ${completedCredits.toFixed(2)}) / (${C} + ${daysActive})`);
+      console.log(`      v = ${expectedVelocity.toFixed(2)} créd/dia`);
+
+      if (daysInactive > 2) {
+        console.log(`   ⚠️ ALERTA: ${daysInactive} dias inativos!`);
+        console.log(`      → Se usuário estudasse todos os dias: divisor = ${daysWithStudy + C} (não ${daysActive + C})`);
+        console.log(`      → Velocidade seria: ${((C * prior + completedCredits) / (C + daysWithStudy)).toFixed(2)} créd/dia`);
+        console.log(`      → Ganho potencial: ${(((C * prior + completedCredits) / (C + daysWithStudy)) - velocity).toFixed(2)} créd/dia!`);
+      }
+    }
+
+    // ⚠️ AÇÃO 3: REFORÇO NO MOTOR (Data Base = HOJE)
+    // O SmartForecastEngine.quickForecast() usa addDays(new Date(), days)
+    // garantindo que a projeção sempre parta de HOJE, não do último log.
+    // Isso está implementado na linha 206 do SmartForecastEngine.ts
 
     // Salva nova velocidade EWMA para próxima execução (se estiver em fase madura)
     if (phase === 'MATURITY') {
