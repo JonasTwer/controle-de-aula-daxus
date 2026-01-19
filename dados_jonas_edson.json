@@ -1,0 +1,352 @@
+{
+    "metadata": {
+        "generated_at": "2026-01-19T14:00:00-04:00",
+        "engine_version": "SmartForecastEngine V3.0",
+        "algorithm": "Bayesian Smoothing + EWMA + Credit-Based Weighting",
+        "data_source": "Supabase Database",
+        "project_id": "rcuokolhbmidyxgpnjqs"
+    },
+    "users": [
+        {
+            "name": "Jonas Ramos",
+            "email": "jonas.ramos@trt14.jus.br",
+            "user_id": "dea74d5b-c35f-4b13-b2a5-6d91e2190315",
+            "statistics": {
+                "completed_lessons": 5,
+                "total_lessons": 462,
+                "remaining_lessons": 457,
+                "completion_percentage": 1.08,
+                "total_time_seconds": 2021,
+                "total_time_minutes": 33.68,
+                "avg_time_per_lesson_seconds": 404.20,
+                "avg_time_per_lesson_minutes": 6.74,
+                "active_days": 1,
+                "first_lesson_date": "2026-01-14",
+                "last_lesson_date": "2026-01-14"
+            },
+            "credits_v3": {
+                "completed_credits": 2.26,
+                "avg_credit_per_lesson": 0.45,
+                "remaining_credits": 205.65,
+                "credit_divisor": 15,
+                "credits_breakdown": [
+                    {
+                        "lesson": "Introdução",
+                        "duration_min": 2.82,
+                        "credits": 0.19
+                    },
+                    {
+                        "lesson": "Apresentação da Plataforma & Comunidade no Discord",
+                        "duration_min": 2.78,
+                        "credits": 0.19
+                    },
+                    {
+                        "lesson": "Por que Python?",
+                        "duration_min": 7.93,
+                        "credits": 0.53
+                    },
+                    {
+                        "lesson": "Introdução ao Google Colab",
+                        "duration_min": 5.78,
+                        "credits": 0.39
+                    },
+                    {
+                        "lesson": "Acessando o Google Colab",
+                        "duration_min": 14.37,
+                        "credits": 0.96
+                    }
+                ]
+            },
+            "forecast": {
+                "phase": "COLD_START",
+                "velocity_credits_per_day": 4.66,
+                "velocity_minutes_per_day": 69.9,
+                "bayes_config": {
+                    "C": 7,
+                    "prior": 5.0,
+                    "formula": "(7 × 5.0 + 2.26) / (7 + 1)"
+                },
+                "calculation": {
+                    "numerator": 37.26,
+                    "denominator": 8,
+                    "result": 4.66
+                },
+                "days_remaining": 45,
+                "estimated_completion_date": "2026-03-05",
+                "calculation_details": {
+                    "formula": "⌈205.65 / 4.66⌉",
+                    "raw_result": 44.13,
+                    "rounded_result": 45,
+                    "base_date": "2026-01-19"
+                }
+            },
+            "lesson_history": [
+                {
+                    "date": "2026-01-14",
+                    "title": "Introdução",
+                    "duration_seconds": 169,
+                    "duration_minutes": 2.82,
+                    "credits": 0.19
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Apresentação da Plataforma & Comunidade no Discord",
+                    "duration_seconds": 167,
+                    "duration_minutes": 2.78,
+                    "credits": 0.19
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Por que Python?",
+                    "duration_seconds": 476,
+                    "duration_minutes": 7.93,
+                    "credits": 0.53
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Introdução ao Google Colab",
+                    "duration_seconds": 347,
+                    "duration_minutes": 5.78,
+                    "credits": 0.39
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Acessando o Google Colab",
+                    "duration_seconds": 862,
+                    "duration_minutes": 14.37,
+                    "credits": 0.96
+                }
+            ],
+            "daily_progress": [
+                {
+                    "date": "2026-01-14",
+                    "lessons": 5,
+                    "total_minutes": 33.68,
+                    "total_credits": 2.26
+                }
+            ]
+        },
+        {
+            "name": "Edson Furtado",
+            "email": "edson.furtado@trt14.jus.br",
+            "user_id": "a9135e7a-e304-464f-92d3-ce6eb235c394",
+            "statistics": {
+                "completed_lessons": 7,
+                "total_lessons": 462,
+                "remaining_lessons": 455,
+                "completion_percentage": 1.52,
+                "total_time_seconds": 4440,
+                "total_time_minutes": 74.00,
+                "avg_time_per_lesson_seconds": 634.29,
+                "avg_time_per_lesson_minutes": 10.57,
+                "active_days": 3,
+                "first_lesson_date": "2026-01-12",
+                "last_lesson_date": "2026-01-14"
+            },
+            "credits_v3": {
+                "completed_credits": 4.94,
+                "avg_credit_per_lesson": 0.71,
+                "remaining_credits": 323.05,
+                "credit_divisor": 15,
+                "credits_breakdown": [
+                    {
+                        "lesson": "A função print()",
+                        "duration_min": 11.28,
+                        "credits": 0.75
+                    },
+                    {
+                        "lesson": "Introdução ao Google Colab",
+                        "duration_min": 5.78,
+                        "credits": 0.39
+                    },
+                    {
+                        "lesson": "Acessando o Google Colab",
+                        "duration_min": 14.37,
+                        "credits": 0.96
+                    },
+                    {
+                        "lesson": "A função input()",
+                        "duration_min": 7.38,
+                        "credits": 0.49
+                    },
+                    {
+                        "lesson": "Tipagem dinâmica",
+                        "duration_min": 4.25,
+                        "credits": 0.28
+                    },
+                    {
+                        "lesson": "Trabalhando com variáveis",
+                        "duration_min": 14.93,
+                        "credits": 1.00
+                    },
+                    {
+                        "lesson": "Operadores aritméticos",
+                        "duration_min": 16.00,
+                        "credits": 1.07
+                    }
+                ]
+            },
+            "forecast": {
+                "phase": "COLD_START",
+                "velocity_credits_per_day": 3.99,
+                "velocity_minutes_per_day": 59.9,
+                "bayes_config": {
+                    "C": 7,
+                    "prior": 5.0,
+                    "formula": "(7 × 5.0 + 4.94) / (7 + 3)"
+                },
+                "calculation": {
+                    "numerator": 39.94,
+                    "denominator": 10,
+                    "result": 3.99
+                },
+                "days_remaining": 81,
+                "estimated_completion_date": "2026-04-10",
+                "calculation_details": {
+                    "formula": "⌈323.05 / 3.99⌉",
+                    "raw_result": 80.96,
+                    "rounded_result": 81,
+                    "base_date": "2026-01-19"
+                }
+            },
+            "lesson_history": [
+                {
+                    "date": "2026-01-12",
+                    "title": "A função print()",
+                    "duration_seconds": 677,
+                    "duration_minutes": 11.28,
+                    "credits": 0.75
+                },
+                {
+                    "date": "2026-01-13",
+                    "title": "Introdução ao Google Colab",
+                    "duration_seconds": 347,
+                    "duration_minutes": 5.78,
+                    "credits": 0.39
+                },
+                {
+                    "date": "2026-01-13",
+                    "title": "Acessando o Google Colab",
+                    "duration_seconds": 862,
+                    "duration_minutes": 14.37,
+                    "credits": 0.96
+                },
+                {
+                    "date": "2026-01-13",
+                    "title": "A função input()",
+                    "duration_seconds": 443,
+                    "duration_minutes": 7.38,
+                    "credits": 0.49
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Tipagem dinâmica",
+                    "duration_seconds": 255,
+                    "duration_minutes": 4.25,
+                    "credits": 0.28
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Trabalhando com variáveis",
+                    "duration_seconds": 896,
+                    "duration_minutes": 14.93,
+                    "credits": 1.00
+                },
+                {
+                    "date": "2026-01-14",
+                    "title": "Operadores aritméticos",
+                    "duration_seconds": 960,
+                    "duration_minutes": 16.00,
+                    "credits": 1.07
+                }
+            ],
+            "daily_progress": [
+                {
+                    "date": "2026-01-12",
+                    "lessons": 1,
+                    "total_minutes": 11.28,
+                    "total_credits": 0.75
+                },
+                {
+                    "date": "2026-01-13",
+                    "lessons": 3,
+                    "total_minutes": 27.53,
+                    "total_credits": 1.84
+                },
+                {
+                    "date": "2026-01-14",
+                    "lessons": 3,
+                    "total_minutes": 35.18,
+                    "total_credits": 2.35
+                }
+            ]
+        }
+    ],
+    "comparison": {
+        "metrics": {
+            "avg_time_per_lesson": {
+                "jonas": 6.74,
+                "edson": 10.57,
+                "difference_percentage": 56.82,
+                "winner": "edson"
+            },
+            "total_effort": {
+                "jonas": 33.68,
+                "edson": 74.00,
+                "difference_percentage": 119.74,
+                "winner": "edson"
+            },
+            "credits_per_lesson": {
+                "jonas": 0.45,
+                "edson": 0.71,
+                "difference_percentage": 57.78,
+                "winner": "edson"
+            },
+            "remaining_credits": {
+                "jonas": 205.65,
+                "edson": 323.05,
+                "difference_percentage": -36.34,
+                "winner": "jonas"
+            },
+            "velocity_credits_per_day": {
+                "jonas": 4.66,
+                "edson": 3.99,
+                "difference_percentage": 16.79,
+                "winner": "jonas"
+            },
+            "days_to_completion": {
+                "jonas": 45,
+                "edson": 81,
+                "difference_days": 36,
+                "winner": "jonas"
+            }
+        },
+        "key_insights": [
+            "Jonas termina 36 dias antes (05/03/2026 vs 10/04/2026)",
+            "Edson investe 57% mais tempo por aula (10.57 vs 6.74 min)",
+            "Edson tem 57% mais trabalho restante (323.05 vs 205.65 créditos)",
+            "Jonas tem ritmo projetado 17% maior (4.66 vs 3.99 créd/dia)",
+            "V3.0 reconhece densidade de aulas do Edson, eliminando distorção da V2.2"
+        ]
+    },
+    "recommendations": {
+        "jonas": {
+            "daily_target_credits": 4.66,
+            "daily_target_minutes": 69.9,
+            "suggestions": [
+                "Meta: 5 aulas de 15 min/dia = 5.0 créditos",
+                "Distribuir estudo ao longo dos dias para consistência",
+                "Para acelerar: 6 créd/dia → conclusão em ~34 dias (22/02)"
+            ]
+        },
+        "edson": {
+            "daily_target_credits": 3.99,
+            "daily_target_minutes": 59.9,
+            "suggestions": [
+                "Meta: 4 aulas de 15 min/dia = 4.0 créditos",
+                "Manter aulas densas = aprendizado profundo",
+                "Para acelerar: 5 créd/dia → conclusão em ~65 dias (24/03)"
+            ]
+        }
+    }
+}

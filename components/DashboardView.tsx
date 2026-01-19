@@ -7,16 +7,17 @@ import {
   TrendingUp, Clock, Zap, Hourglass, Target, GraduationCap,
   History, CheckCircle2, Circle, Flag
 } from 'lucide-react';
-import { AppStats, StudyLog } from '../types';
+import { AppStats, StudyLog, Lesson } from '../types';
 import { formatDateLocal } from '../utils';
 import { SmartForecastEngine, calculateWeight, FORECAST_CONFIG } from '../utils/SmartForecastEngine';
 
 // ⚠️ VERSIONING: Qualquer mudança no algoritmo incrementa esta constante
-const FORECAST_ENGINE_VERSION = '3.0.0';
+const FORECAST_ENGINE_VERSION = '5.0.0'; // ⬅️ V5.0: Dynamic Real Load
 
 interface DashboardViewProps {
   stats: AppStats;
   logs: StudyLog[];
+  lessons: Lesson[]; // ⬅️ V5.0: NOVO! Array de todas as aulas para cálculo de carga real
 }
 
 // Função para formatar minutos em formato "Xh Ymin" ou "Xmin"
@@ -53,14 +54,14 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs, lessons }) => {
 
   // ⚠️ AÇÃO 2: PURGA DE CACHE VICIADO (Executado 1x por sessão)
   useEffect(() => {
     const storedVersion = localStorage.getItem('forecast_engine_version');
     const storedEwmaKey = 'forecast_ewma_velocity';
 
-    // Se versão não existe OU é diferente de V3.0, limpar cache antigo
+    // Se versão não existe OU é diferente de V5.0, limpar cache antigo
     if (!storedVersion || storedVersion !== FORECAST_ENGINE_VERSION) {
       console.log('🔧 [FORECAST] Detectado motor antigo ou ausente');
       console.log(`   Versão armazenada: ${storedVersion || 'NENHUMA'}`);
@@ -73,9 +74,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       // Salvar nova versão
       localStorage.setItem('forecast_engine_version', FORECAST_ENGINE_VERSION);
 
-      console.log('   ✅ Cache limpo! Sistema agora usa V3.0 puro.');
+      console.log('   ✅ Cache limpo! Sistema agora usa V5.0 - Dynamic Real Load.');
     } else {
-      console.log(`✅ [FORECAST] Motor V3.0 já ativo (versão ${storedVersion})`);
+      console.log(`✅ [FORECAST] Motor V5.0 já ativo (versão ${storedVersion})`);
     }
   }, []); // Executa apenas uma vez no mount
 
@@ -164,20 +165,39 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, logs }) => {
       return sum + credit;
     }, 0);
 
-    // 2B. Soma dos créditos das aulas RESTANTES
-    // Precisamos acessar todas as lessons (não apenas os logs) para calcular créditos restantes
-    // Vamos criar um Set de IDs das aulas completas para filtrar
+    // 2B. ⚠️ V5.0: CARGA REAL DINÂMICA (Elimina Erro de Extrapolação)
+    // ANTES (V3.0): assumia que aulas restantes = média das concluídas ❌
+    // DEPOIS (V5.0): soma a duração REAL das aulas restantes do banco ✅
+
+    // Criar Set de IDs das aulas completadas
     const completedLessonIds = new Set(completedLogs.map(log => log.lessonId));
 
-    // Note: Precisamos das lessons originais, que não estão disponíveis diretamente no Dashboard
-    // mas podemos inferir pelos logs e stats
-    // WORKAROUND: Usa stats.remainingCount como aproximação inicial
-    // Isso será ajustado quando passarmos 'lessons' como prop ou contexto
+    // Filtrar aulas que NÃO foram concluídas
+    const remainingLessons = lessons.filter(lesson => !completedLessonIds.has(lesson.id));
 
-    // Por enquanto, vamos usar uma abordagem simplificada:
-    // Assumir que aulas restantes têm crédito médio das aulas completadas
-    const avgCreditPerLesson = completedCredits / completedLogs.length;
-    const remainingCredits = avgCreditPerLesson * stats.remainingCount;
+    //🏔️ CALCULAR A MONTANHA: Somar durações reais das aulas restantes
+    const remainingCredits = remainingLessons.reduce((sum, lesson) => {
+      const durationMinutes = (lesson.durationSec || 0) / 60;
+      const credit = calculateWeight(durationMinutes);
+      return sum + credit;
+    }, 0);
+
+    // 🔍 LOGGING V5.0 [GPS]
+    const avgCreditPerLessonCompleted = completedCredits / completedLogs.length;
+    const avgCreditPerLessonRemaining = remainingCredits / remainingLessons.length;
+
+    console.log('🏔️ [V5.0 - DYNAMIC REAL LOAD] Medindo a Montanha Real:');
+    console.log(`   Aulas restantes: ${remainingLessons.length}`);
+    console.log(`   Carga REAL restante: ${remainingCredits.toFixed(2)} créditos`);
+    console.log(`   Créd médio/aula completada: ${avgCreditPerLessonCompleted.toFixed(2)}`);
+    console.log(`   Créd médio/aula restante: ${avgCreditPerLessonRemaining.toFixed(2)}`);
+
+    if (Math.abs(avgCreditPerLessonCompleted - avgCreditPerLessonRemaining) > 0.2) {
+      console.log(`   ⚠️ ERRO DE EXTRAPOLAÇÃO DETECTADO!`);
+      console.log(`      → Diferença: ${((avgCreditPerLessonRemaining / avgCreditPerLessonCompleted - 1) * 100).toFixed(1)}%`);
+      console.log(`      → V3.0 estimaria: ${(avgCreditPerLessonCompleted * remainingLessons.length).toFixed(2)} créd ❌`);
+      console.log(`      → V5.0 usa carga real: ${remainingCredits.toFixed(2)} créd ✅`);
+    }
 
     // 3. PREPARAR HISTÓRICO DOS ÚLTIMOS DIAS (Créditos por dia)
     const recentDailyProgress: number[] = [];
