@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BarChart2, BookOpen, MessageSquare, Settings } from 'lucide-react';
+import { BarChart2, BookOpen, MessageSquare, Settings, Shield } from 'lucide-react';
 import { TabId, Lesson, StudyLog } from './types';
 import DashboardView from './components/DashboardView';
 import StudyPlanView from './components/StudyPlanView';
@@ -14,6 +14,9 @@ import { Session } from '@supabase/supabase-js';
 import UpdatePasswordView from './components/UpdatePasswordView';
 import toast, { Toaster } from 'react-hot-toast';
 import { showFeedbackCard } from './utils/feedbackUtils';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminRoute from './components/AdminRoute';
+import { isAdmin } from './utils/adminConfig';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -442,6 +445,19 @@ const App: React.FC = () => {
             <h1 className="font-bold text-lg">CoursePlanner <span className="text-indigo-500">AI</span></h1>
           </div>
           <div className="flex items-center gap-3">
+            {/* BOTÃO GOD MODE - Apenas para Admins */}
+            {isAdmin(session.user.email) && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`p-2 rounded-lg transition-all ${activeTab === 'admin'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-600 hover:text-white'
+                  }`}
+                title="God Mode - Admin Dashboard"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+            )}
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bem-vindo</p>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{session.user.user_metadata?.full_name || 'Usuário'}</p>
@@ -460,7 +476,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 max-w-3xl w-full mx-auto pb-24 p-4" style={{ overflow: 'visible' }}>
+      <main className={`flex-1 w-full pb-24 p-4 ${activeTab !== 'admin' ? 'max-w-3xl mx-auto' : ''}`} style={{ overflow: 'visible' }}>
         {activeTab === 'dashboard' && <DashboardView stats={processedData.stats} logs={logs} lessons={lessons} />}
         {activeTab === 'plan' && <StudyPlanView groupedCourses={processedData.grouped} onRegisterStudy={setModalLesson} />}
         {activeTab === 'assistant' && <AssistantView contextData={processedData} />}
@@ -475,6 +491,11 @@ const App: React.FC = () => {
             userMetadata={session.user.user_metadata}
             userEmail={session.user.email}
           />
+        )}
+        {activeTab === 'admin' && (
+          <AdminRoute onAccessDenied={() => setActiveTab('dashboard')}>
+            <AdminDashboard lessons={lessons} />
+          </AdminRoute>
         )}
       </main>
 

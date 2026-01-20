@@ -32,7 +32,7 @@ export interface AppStats {
   todayFormatted: string;
 }
 
-export type TabId = 'dashboard' | 'plan' | 'assistant' | 'config';
+export type TabId = 'dashboard' | 'plan' | 'assistant' | 'config' | 'admin';
 
 export interface MateriaGroup {
   name: string;
